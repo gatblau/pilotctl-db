@@ -16,31 +16,103 @@ DO
 $$
     BEGIN
         ---------------------------------------------------------------------------
-        -- BEAT
+        -- HOST (store the last heart bit timestamp received from a host)
         ---------------------------------------------------------------------------
-        IF NOT EXISTS(SELECT relname FROM pg_class WHERE relname = 'beat')
+        IF NOT EXISTS(SELECT relname FROM pg_class WHERE relname = 'host')
         THEN
-            CREATE SEQUENCE beat_id_seq
+            CREATE SEQUENCE host_id_seq
                 INCREMENT 1
                 START 1000
                 MINVALUE 1000
                 MAXVALUE 9223372036854775807
                 CACHE 1;
 
-            ALTER SEQUENCE beat_id_seq
+            ALTER SEQUENCE host_id_seq
                 OWNER TO rem;
 
-            CREATE TABLE "beat"
+            CREATE TABLE "host"
             (
-                id      BIGINT                 NOT NULL DEFAULT nextval('beat_id_seq'::regclass),
-                key     CHARACTER VARYING(100) NOT NULL,
-                updated TIMESTAMP(6) WITH TIME ZONE     DEFAULT CURRENT_TIMESTAMP(6),
-                CONSTRAINT beat_id_pk PRIMARY KEY (id),
-                CONSTRAINT beat_key_uc UNIQUE (key)
+                id        BIGINT                 NOT NULL DEFAULT nextval('host_id_seq'::regclass),
+                key       CHARACTER VARYING(100) NOT NULL,
+                last_seen TIMESTAMP(6) WITH TIME ZONE     DEFAULT CURRENT_TIMESTAMP(6),
+                CONSTRAINT host_id_pk PRIMARY KEY (id),
+                CONSTRAINT host_key_uc UNIQUE (key)
             ) WITH (OIDS = FALSE)
               TABLESPACE pg_default;
 
-            ALTER TABLE "beat"
+            ALTER TABLE "host"
+                OWNER to rem;
+        END IF;
+
+        ---------------------------------------------------------------------------
+        -- COMM (store the definition of commands that can be executed on remote hosts)
+        ---------------------------------------------------------------------------
+        IF NOT EXISTS(SELECT relname FROM pg_class WHERE relname = 'comm')
+        THEN
+            CREATE SEQUENCE comm_id_seq
+                INCREMENT 1
+                START 1000
+                MINVALUE 1000
+                MAXVALUE 9223372036854775807
+                CACHE 1;
+
+            ALTER SEQUENCE comm_id_seq
+                OWNER TO rem;
+
+            CREATE TABLE "comm"
+            (
+                id      BIGINT                 NOT NULL DEFAULT nextval('comm_id_seq'::regclass),
+                package CHARACTER VARYING(100) NOT NULL,
+                fx      CHARACTER VARYING(100) NOT NULL,
+                input   HSTORE,
+                created TIMESTAMP(6) WITH TIME ZONE     DEFAULT CURRENT_TIMESTAMP(6),
+                updated TIMESTAMP(6) WITH TIME ZONE     DEFAULT CURRENT_TIMESTAMP(6),
+                CONSTRAINT comm_id_pk PRIMARY KEY (id)
+            ) WITH (OIDS = FALSE)
+              TABLESPACE pg_default;
+
+            ALTER TABLE "comm"
+                OWNER to rem;
+        END IF;
+
+        ---------------------------------------------------------------------------
+        -- JOB (store commands to be executed on remote hosts)
+        ---------------------------------------------------------------------------
+        IF NOT EXISTS(SELECT relname FROM pg_class WHERE relname = 'job')
+        THEN
+            CREATE SEQUENCE job_id_seq
+                INCREMENT 1
+                START 1000
+                MINVALUE 1000
+                MAXVALUE 9223372036854775807
+                CACHE 1;
+
+            ALTER SEQUENCE job_id_seq
+                OWNER TO rem;
+
+            CREATE TABLE "job"
+            (
+                id        BIGINT NOT NULL             DEFAULT nextval('job_id_seq'::regclass),
+                host_id   BIGINT NOT NULL,
+                comm_id   BIGINT NOT NULL,
+                status    CHAR(1),
+                result    TEXT,
+                created   TIMESTAMP(6) WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP(6),
+                started   TIMESTAMP(6) WITH TIME ZONE,
+                completed TIMESTAMP(6) WITH TIME ZONE,
+                CONSTRAINT job_id_pk PRIMARY KEY (id),
+                CONSTRAINT job_host_id_fk FOREIGN KEY (host_id)
+                    REFERENCES host (id) MATCH SIMPLE
+                    ON UPDATE NO ACTION
+                    ON DELETE CASCADE,
+                CONSTRAINT job_comm_id_fk FOREIGN KEY (comm_id)
+                    REFERENCES comm (id) MATCH SIMPLE
+                    ON UPDATE NO ACTION
+                    ON DELETE CASCADE
+            ) WITH (OIDS = FALSE)
+              TABLESPACE pg_default;
+
+            ALTER TABLE "job"
                 OWNER to rem;
         END IF;
     END;
