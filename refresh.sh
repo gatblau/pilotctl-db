@@ -35,7 +35,7 @@ docker rm -f remdb
 docker rm -f dbman
 
 echo "? starting a new database container"
-docker run --name remdb -it -d -p 5432:5432 -e POSTGRESQL_ADMIN_PASSWORD=${DBPWD} "centos/postgresql-12-centos8"
+docker run --name remdb -it -d -p 5432:5432 -e POSTGRES_PASSWORD=${DBPWD} "postgres:13"
 
 echo "? waiting for the database to start before proceeding"
 sleep 5
