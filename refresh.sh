@@ -41,12 +41,15 @@ echo "? waiting for the database to start before proceeding"
 sleep 5
 
 echo "? launching DbMan"
-docker run --name dbman -itd -p 8085:8085 --link oxdb \
-  -e OX_DBM_DB_HOST=oxdb \
+docker run --name dbman -itd -p 8085:8085 --link remdb \
+  -e OX_DBM_DB_HOST=remdb \
   -e OX_DBM_DB_ADMINPWD=${DBPWD} \
   -e OX_DBM_HTTP_AUTHMODE=none \
   -e OX_DBM_APPVERSION=${APP_VER} \
-  -e OX_DBM_REPO_URI=${GIT_URI}
+  -e OX_DBM_DB_NAME=rem \
+  -e OX_DBM_DB_USERNAME=rem \
+  -e OX_DBM_DB_PASSWORD=r3m \
+  -e OX_DBM_REPO_URI=${GIT_URI} \
   "gatblau/dbman-snapshot"
 
 echo "? please wait for DbMan to become available"

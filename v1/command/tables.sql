@@ -28,7 +28,7 @@ $$
                 CACHE 1;
 
             ALTER SEQUENCE beat_id_seq
-                OWNER TO onix;
+                OWNER TO rem;
 
             CREATE TABLE "beat"
             (
@@ -41,7 +41,7 @@ $$
               TABLESPACE pg_default;
 
             ALTER TABLE "beat"
-                OWNER to onix;
+                OWNER to rem;
         END IF;
     END;
 $$
