@@ -16,7 +16,7 @@ DO
 $$
     BEGIN
         ---------------------------------------------------------------------------
-        -- HOST (store the last heart bit timestamp received from a host)
+        -- HOST (store the last seen timestamp received from a host)
         ---------------------------------------------------------------------------
         IF NOT EXISTS(SELECT relname FROM pg_class WHERE relname = 'host')
         THEN
@@ -34,7 +34,7 @@ $$
             (
                 id        BIGINT                 NOT NULL DEFAULT nextval('host_id_seq'::regclass),
                 key       CHARACTER VARYING(100) NOT NULL,
-                last_seen TIMESTAMP(6) WITH TIME ZONE     DEFAULT CURRENT_TIMESTAMP(6),
+                last_seen TIMESTAMP(6) WITH TIME ZONE,
                 CONSTRAINT host_id_pk PRIMARY KEY (id),
                 CONSTRAINT host_key_uc UNIQUE (key)
             ) WITH (OIDS = FALSE)
