@@ -76,7 +76,7 @@ $$
         END IF;
 
         ---------------------------------------------------------------------------
-        -- JOB (store commands to be executed on remote hosts)
+        -- JOB (log status of commands executed on remote hosts)
         ---------------------------------------------------------------------------
         IF NOT EXISTS(SELECT relname FROM pg_class WHERE relname = 'job')
         THEN
@@ -95,7 +95,6 @@ $$
                 id        BIGINT NOT NULL             DEFAULT nextval('job_id_seq'::regclass),
                 host_id   BIGINT NOT NULL,
                 comm_id   BIGINT NOT NULL,
-                status    CHAR(1),
                 result    TEXT,
                 created   TIMESTAMP(6) WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP(6),
                 started   TIMESTAMP(6) WITH TIME ZONE,
