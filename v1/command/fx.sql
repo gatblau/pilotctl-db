@@ -15,6 +15,76 @@
 DO
 $$
     BEGIN
+        -- inserts or updates the last_seen timestamp for a host
+        CREATE OR REPLACE FUNCTION rem_beat(
+            host_key_param CHARACTER VARYING(100)
+        )
+            RETURNS VOID
+            LANGUAGE 'plpgsql'
+            COST 100
+            VOLATILE
+        AS
+        $BODY$
+        DECLARE
+            host_count SMALLINT;
+        BEGIN
+            -- checks if the entry exists
+            SELECT COUNT(*) FROM host WHERE key = host_key_param INTO host_count;
 
+            -- if the host does not exist, insert a new entry
+            IF host_count = 0 THEN
+                INSERT INTO host(key, last_seen) VALUES (host_key_param, now());
+            ELSE -- otherwise, update the last_seen timestamp
+                UPDATE host SET last_seen = now() WHERE key = host_key_param;
+            END IF;
+        END;
+        $BODY$;
+
+        -- return all hosts updated after the specified since time
+        CREATE OR REPLACE FUNCTION rem_get_host_seen(
+            since TIMESTAMP(6) WITH TIME ZONE
+        )
+            RETURNS TABLE
+                    (
+                        key CHARACTER VARYING,
+                        last_seen TIMESTAMP(6) WITH TIME ZONE
+                    )
+            LANGUAGE 'plpgsql'
+            COST 100
+            VOLATILE
+        AS
+        $BODY$
+        BEGIN
+            RETURN QUERY SELECT h.key, h.last_seen FROM host h WHERE h.last_seen BETWEEN since AND now();
+        END;
+        $BODY$;
+
+        -- get a list of hosts since a time with their connection status
+        CREATE OR REPLACE FUNCTION rem_get_host_status(
+            since TIMESTAMP(6) WITH TIME ZONE
+        )
+            RETURNS TABLE
+                    (
+                        key CHARACTER VARYING,
+                        last_seen TIMESTAMP(6) WITH TIME ZONE,
+                        status BOOLEAN
+                    )
+            LANGUAGE 'plpgsql'
+            COST 100
+            VOLATILE
+        AS
+        $BODY$
+        BEGIN
+            RETURN QUERY
+                SELECT h.key,
+                       h.last_seen,
+                       CASE
+                           WHEN h.last_seen > since THEN TRUE
+                           ELSE FALSE
+                           END connected
+                FROM host h
+                WHERE h.last_seen BETWEEN since AND now();
+        END;
+        $BODY$;
     END;
 $$
