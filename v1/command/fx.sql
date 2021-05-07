@@ -114,5 +114,32 @@ $$
                 WHERE h.last_seen BETWEEN since AND now();
         END;
         $BODY$;
+
+        -- record server side events using information in host table
+        CREATE OR REPLACE FUNCTION rem_record_disconnected(
+            after INTERVAL
+        )
+            RETURNS VOID
+            LANGUAGE 'plpgsql'
+            COST 100
+            VOLATILE
+        AS
+        $BODY$
+        BEGIN
+            -- insert a "disconnected" event if the host has not been seen for a log enough interval
+            INSERT INTO "event" (type, time, host_id)
+            SELECT 2::SMALLINT, h.last_seen, h.id -- uses 2 for disconnected (1 for connected)
+            FROM host h
+            WHERE h.last_seen < now() - after
+              AND h.id NOT IN
+                  (
+                      SELECT host_id
+                      FROM event e
+                      WHERE e.host_id = h.id
+                        AND e.time = h.last_seen
+                  );
+        END;
+        $BODY$;
+
     END;
 $$
