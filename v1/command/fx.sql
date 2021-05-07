@@ -86,5 +86,33 @@ $$
                 WHERE h.last_seen BETWEEN since AND now();
         END;
         $BODY$;
+
+        -- get a list of hosts since a time with their connection status
+        CREATE OR REPLACE FUNCTION rem_get_host_status(
+            since TIMESTAMP(6) WITH TIME ZONE
+        )
+            RETURNS TABLE
+                    (
+                        key CHARACTER VARYING,
+                        last_seen TIMESTAMP(6) WITH TIME ZONE,
+                        status BOOLEAN
+                    )
+            LANGUAGE 'plpgsql'
+            COST 100
+            VOLATILE
+        AS
+        $BODY$
+        BEGIN
+            RETURN QUERY
+                SELECT h.key,
+                       h.last_seen,
+                       CASE
+                           WHEN h.last_seen > since THEN TRUE
+                           ELSE FALSE
+                           END connected
+                FROM host h
+                WHERE h.last_seen BETWEEN since AND now();
+        END;
+        $BODY$;
     END;
 $$

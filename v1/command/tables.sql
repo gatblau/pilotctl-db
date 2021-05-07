@@ -114,5 +114,39 @@ $$
             ALTER TABLE "job"
                 OWNER to rem;
         END IF;
+
+        ---------------------------------------------------------------------------
+        -- EVENT (host events)
+        ---------------------------------------------------------------------------
+        IF NOT EXISTS(SELECT relname FROM pg_class WHERE relname = 'event')
+        THEN
+            CREATE SEQUENCE event_id_seq
+                INCREMENT 1
+                START 1000
+                MINVALUE 1000
+                MAXVALUE 9223372036854775807
+                CACHE 1;
+
+            ALTER SEQUENCE event_id_seq
+                OWNER TO rem;
+
+            CREATE TABLE "event"
+            (
+                id        BIGINT                 NOT NULL DEFAULT nextval('event_id_seq'::regclass),
+                type      SMALLINT,
+                time      TIMESTAMP(6) WITH TIME ZONE,
+                host_id   BIGINT,
+                CONSTRAINT event_id_pk PRIMARY KEY (id),
+                CONSTRAINT event_host_id_fk FOREIGN KEY (host_id)
+                    REFERENCES host (id) MATCH SIMPLE
+                    ON UPDATE NO ACTION
+                    ON DELETE CASCADE
+            ) WITH (OIDS = FALSE)
+              TABLESPACE pg_default;
+
+            ALTER TABLE "event"
+                OWNER to rem;
+        END IF;
+
     END;
 $$
