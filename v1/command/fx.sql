@@ -46,7 +46,7 @@ $$
         )
             RETURNS TABLE
                     (
-                        key CHARACTER VARYING,
+                        key       CHARACTER VARYING,
                         last_seen TIMESTAMP(6) WITH TIME ZONE
                     )
             LANGUAGE 'plpgsql'
@@ -65,9 +65,9 @@ $$
         )
             RETURNS TABLE
                     (
-                        key CHARACTER VARYING,
+                        key       CHARACTER VARYING,
                         last_seen TIMESTAMP(6) WITH TIME ZONE,
-                        status BOOLEAN
+                        status    BOOLEAN
                     )
             LANGUAGE 'plpgsql'
             COST 100
@@ -93,9 +93,9 @@ $$
         )
             RETURNS TABLE
                     (
-                        key CHARACTER VARYING,
+                        key       CHARACTER VARYING,
                         last_seen TIMESTAMP(6) WITH TIME ZONE,
-                        status BOOLEAN
+                        status    BOOLEAN
                     )
             LANGUAGE 'plpgsql'
             COST 100
@@ -115,8 +115,8 @@ $$
         END;
         $BODY$;
 
-        -- record server side events using information in host table
-        CREATE OR REPLACE FUNCTION rem_record_disconnected(
+        -- record server side connected/disconnected events using information in host table
+        CREATE OR REPLACE FUNCTION rem_record_conn_status(
             after INTERVAL
         )
             RETURNS VOID
@@ -138,8 +138,20 @@ $$
                       WHERE e.host_id = h.id
                         AND e.time = h.last_seen
                   );
+
+            -- insert a "connected" event if the host has been seen recently and the last recorded
+            -- event was disconnected
+            INSERT INTO event (type, time, host_id)
+            -- last event for host that is currently connected is disconnected
+            SELECT 1::SMALLINT, h.last_seen, h.id
+            FROM event e
+              INNER JOIN host h
+                ON e.host_id = h.id
+            WHERE e.type = 2
+              AND h.last_seen > now() - after -- hosts that are up
+            ORDER BY e.time DESC
+            LIMIT 1;
         END;
         $BODY$;
-
-    END;
+    END
 $$
