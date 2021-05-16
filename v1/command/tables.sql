@@ -148,5 +148,47 @@ $$
                 OWNER to rem;
         END IF;
 
+        ---------------------------------------------------------------------------
+        -- EVENT_CHANGE
+        ---------------------------------------------------------------------------
+        IF NOT EXISTS(SELECT relname FROM pg_class WHERE relname = 'event_change')
+        THEN
+            CREATE TABLE event_change
+            (
+                operation CHAR(1)   NOT NULL,
+                changed   TIMESTAMP NOT NULL,
+                id        BIGINT,
+                type      SMALLINT,
+                time      TIMESTAMP(6) WITH TIME ZONE,
+                host_id   BIGINT
+            ) WITH (OIDS = FALSE)
+              TABLESPACE pg_default;
+
+            CREATE OR REPLACE FUNCTION rem_change_event() RETURNS TRIGGER AS
+            $rem_change_event$
+            BEGIN
+                IF (TG_OP = 'DELETE') THEN
+                    INSERT INTO event_change SELECT 'D', now(), OLD.*;
+                    RETURN OLD;
+                ELSIF (TG_OP = 'UPDATE') THEN
+                    INSERT INTO event_change SELECT 'U', now(), NEW.*;
+                    RETURN NEW;
+                ELSIF (TG_OP = 'INSERT') THEN
+                    INSERT INTO event_change SELECT 'I', now(), NEW.*;
+                    RETURN NEW;
+                END IF;
+                RETURN NULL; -- result is ignored since this is an AFTER trigger
+            END;
+            $rem_change_event$ LANGUAGE plpgsql;
+
+            CREATE TRIGGER event_change
+                AFTER INSERT OR UPDATE OR DELETE
+                ON event
+                FOR EACH ROW
+            EXECUTE PROCEDURE rem_change_event();
+
+            ALTER TABLE event_change
+                OWNER to rem;
+        END IF;
     END;
 $$
