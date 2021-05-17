@@ -116,78 +116,79 @@ $$
         END IF;
 
         ---------------------------------------------------------------------------
-        -- EVENT (host events)
+        -- STATUS (host connectivity)
         ---------------------------------------------------------------------------
-        IF NOT EXISTS(SELECT relname FROM pg_class WHERE relname = 'event')
+        IF NOT EXISTS(SELECT relname FROM pg_class WHERE relname = 'status')
         THEN
-            CREATE SEQUENCE event_id_seq
+            CREATE SEQUENCE status_id_seq
                 INCREMENT 1
                 START 1000
                 MINVALUE 1000
                 MAXVALUE 9223372036854775807
                 CACHE 1;
 
-            ALTER SEQUENCE event_id_seq
+            ALTER SEQUENCE status_id_seq
                 OWNER TO rem;
 
-            CREATE TABLE "event"
+            CREATE TABLE "status"
             (
-                id        BIGINT                 NOT NULL DEFAULT nextval('event_id_seq'::regclass),
-                type      SMALLINT,
+                id        BIGINT                 NOT NULL DEFAULT nextval('status_id_seq'::regclass),
+                connected BOOLEAN,
                 time      TIMESTAMP(6) WITH TIME ZONE,
                 host_id   BIGINT,
-                CONSTRAINT event_id_pk PRIMARY KEY (id),
-                CONSTRAINT event_host_id_fk FOREIGN KEY (host_id)
+                CONSTRAINT status_id_pk PRIMARY KEY (id),
+                CONSTRAINT status_host_id_uc UNIQUE (host_id),
+                CONSTRAINT status_host_id_fk FOREIGN KEY (host_id)
                     REFERENCES host (id) MATCH SIMPLE
                     ON UPDATE NO ACTION
                     ON DELETE CASCADE
             ) WITH (OIDS = FALSE)
               TABLESPACE pg_default;
 
-            ALTER TABLE "event"
+            ALTER TABLE "status"
                 OWNER to rem;
         END IF;
 
         ---------------------------------------------------------------------------
-        -- EVENT_CHANGE
+        -- STATUS_HISTORY
         ---------------------------------------------------------------------------
-        IF NOT EXISTS(SELECT relname FROM pg_class WHERE relname = 'event_change')
+        IF NOT EXISTS(SELECT relname FROM pg_class WHERE relname = 'status_history')
         THEN
-            CREATE TABLE event_change
+            CREATE TABLE status_history
             (
                 operation CHAR(1)   NOT NULL,
                 changed   TIMESTAMP NOT NULL,
                 id        BIGINT,
-                type      SMALLINT,
+                connected BOOLEAN,
                 time      TIMESTAMP(6) WITH TIME ZONE,
                 host_id   BIGINT
             ) WITH (OIDS = FALSE)
               TABLESPACE pg_default;
 
-            CREATE OR REPLACE FUNCTION rem_change_event() RETURNS TRIGGER AS
-            $rem_change_event$
+            CREATE OR REPLACE FUNCTION rem_change_status() RETURNS TRIGGER AS
+            $rem_change_status$
             BEGIN
                 IF (TG_OP = 'DELETE') THEN
-                    INSERT INTO event_change SELECT 'D', now(), OLD.*;
+                    INSERT INTO status_history SELECT 'D', now(), OLD.*;
                     RETURN OLD;
                 ELSIF (TG_OP = 'UPDATE') THEN
-                    INSERT INTO event_change SELECT 'U', now(), NEW.*;
+                    INSERT INTO status_history SELECT 'U', now(), NEW.*;
                     RETURN NEW;
                 ELSIF (TG_OP = 'INSERT') THEN
-                    INSERT INTO event_change SELECT 'I', now(), NEW.*;
+                    INSERT INTO status_history SELECT 'I', now(), NEW.*;
                     RETURN NEW;
                 END IF;
                 RETURN NULL; -- result is ignored since this is an AFTER trigger
             END;
-            $rem_change_event$ LANGUAGE plpgsql;
+            $rem_change_status$ LANGUAGE plpgsql;
 
-            CREATE TRIGGER event_change
+            CREATE TRIGGER status_change
                 AFTER INSERT OR UPDATE OR DELETE
-                ON event
+                ON status
                 FOR EACH ROW
-            EXECUTE PROCEDURE rem_change_event();
+            EXECUTE PROCEDURE rem_change_status();
 
-            ALTER TABLE event_change
+            ALTER TABLE status_history
                 OWNER to rem;
         END IF;
     END;
