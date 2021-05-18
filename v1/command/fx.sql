@@ -40,53 +40,6 @@ $$
         END;
         $BODY$;
 
-        -- return all hosts updated after the specified since time
-        CREATE OR REPLACE FUNCTION rem_get_host_seen(
-            since TIMESTAMP(6) WITH TIME ZONE
-        )
-            RETURNS TABLE
-                    (
-                        key       CHARACTER VARYING,
-                        last_seen TIMESTAMP(6) WITH TIME ZONE
-                    )
-            LANGUAGE 'plpgsql'
-            COST 100
-            VOLATILE
-        AS
-        $BODY$
-        BEGIN
-            RETURN QUERY SELECT h.key, h.last_seen FROM host h WHERE h.last_seen BETWEEN since AND now();
-        END;
-        $BODY$;
-
-        -- get a list of hosts since a time with their connection status
-        CREATE OR REPLACE FUNCTION rem_get_host_status(
-            since TIMESTAMP(6) WITH TIME ZONE
-        )
-            RETURNS TABLE
-                    (
-                        key       CHARACTER VARYING,
-                        last_seen TIMESTAMP(6) WITH TIME ZONE,
-                        status    BOOLEAN
-                    )
-            LANGUAGE 'plpgsql'
-            COST 100
-            VOLATILE
-        AS
-        $BODY$
-        BEGIN
-            RETURN QUERY
-                SELECT h.key,
-                       h.last_seen,
-                       CASE
-                           WHEN h.last_seen > since THEN TRUE
-                           ELSE FALSE
-                           END connected
-                FROM host h
-                WHERE h.last_seen BETWEEN since AND now();
-        END;
-        $BODY$;
-
         -- record server side connected/disconnected events using information in host table
         CREATE OR REPLACE FUNCTION rem_record_conn_status(
             after INTERVAL
@@ -118,6 +71,29 @@ $$
               ON s.host_id = h.id
             WHERE s.host_id IS NOT NULL
               AND s.connected <> CASE WHEN h.last_seen < now() - after THEN false ELSE true END;
+        END ;
+        $BODY$;
+
+        -- return connection status
+        CREATE OR REPLACE FUNCTION rem_get_conn_status(
+        )
+            RETURNS TABLE
+                    (
+                        host       CHARACTER VARYING,
+                        connected  BOOLEAN,
+                        last_seen TIMESTAMP(6) WITH TIME ZONE
+                    )
+            LANGUAGE 'plpgsql'
+            COST 100
+            VOLATILE
+        AS
+        $BODY$
+        BEGIN
+            RETURN QUERY
+                SELECT h.key as host, s.connected, s.last_seen
+                FROM status s
+                 INNER JOIN host h
+                    ON h.id = s.host_id;
         END ;
         $BODY$;
     END
