@@ -114,10 +114,10 @@ $$
                 connected=CASE WHEN h.last_seen < now() - after THEN false ELSE true END,
                 last_seen=h.last_seen
             FROM host h
-             LEFT JOIN status s
-               ON s.host_id = h.id
+            LEFT JOIN status s
+              ON s.host_id = h.id
             WHERE s.host_id IS NOT NULL
-               AND s.last_seen <> h.last_seen;
+              AND s.connected <> CASE WHEN h.last_seen < now() - after THEN false ELSE true END;
         END ;
         $BODY$;
     END
