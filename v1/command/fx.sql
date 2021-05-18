@@ -98,32 +98,27 @@ $$
         AS
         $BODY$
         BEGIN
-            -- insert a "disconnected" event if the host has not been seen for a log enough interval
-            INSERT INTO "event" (type, time, host_id)
-            SELECT 2::SMALLINT, h.last_seen, h.id -- uses 2 for disconnected (1 for connected)
+            -- insert any new hosts in the status table
+            INSERT INTO STATUS
+            SELECT h.id,
+                   CASE WHEN h.last_seen < now() - after THEN false ELSE true END,
+                   h.last_seen
             FROM host h
-            WHERE h.last_seen < now() - after
-              AND h.id NOT IN
-                  (
-                      SELECT host_id
-                      FROM event e
-                      WHERE e.host_id = h.id
-                        AND e.time = h.last_seen
-                  );
+             LEFT JOIN status s
+               ON s.host_id = h.id
+            WHERE s.host_id IS NULL;
 
-            -- insert a "connected" event if the host has been seen recently and the last recorded
-            -- event was disconnected
-            INSERT INTO event (type, time, host_id)
-            -- last event for host that is currently connected is disconnected
-            SELECT 1::SMALLINT, h.last_seen, h.id
-            FROM event e
-              INNER JOIN host h
-                ON e.host_id = h.id
-            WHERE e.type = 2
-              AND h.last_seen > now() - after -- hosts that are up
-            ORDER BY e.time DESC
-            LIMIT 1;
-        END;
+            -- update existing hosts in the status table
+            UPDATE status
+            SET host_id=h.id,
+                connected=CASE WHEN h.last_seen < now() - after THEN false ELSE true END,
+                last_seen=h.last_seen
+            FROM host h
+             LEFT JOIN status s
+               ON s.host_id = h.id
+            WHERE s.host_id IS NOT NULL
+               AND s.last_seen <> h.last_seen;
+        END ;
         $BODY$;
     END
 $$

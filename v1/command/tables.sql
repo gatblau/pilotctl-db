@@ -120,24 +120,12 @@ $$
         ---------------------------------------------------------------------------
         IF NOT EXISTS(SELECT relname FROM pg_class WHERE relname = 'status')
         THEN
-            CREATE SEQUENCE status_id_seq
-                INCREMENT 1
-                START 1000
-                MINVALUE 1000
-                MAXVALUE 9223372036854775807
-                CACHE 1;
-
-            ALTER SEQUENCE status_id_seq
-                OWNER TO rem;
-
             CREATE TABLE "status"
             (
-                id        BIGINT                 NOT NULL DEFAULT nextval('status_id_seq'::regclass),
-                connected BOOLEAN,
-                time      TIMESTAMP(6) WITH TIME ZONE,
                 host_id   BIGINT,
-                CONSTRAINT status_id_pk PRIMARY KEY (id),
-                CONSTRAINT status_host_id_uc UNIQUE (host_id),
+                connected BOOLEAN,
+                last_seen TIMESTAMP(6) WITH TIME ZONE,
+                CONSTRAINT status_host_id_pk PRIMARY KEY (host_id),
                 CONSTRAINT status_host_id_fk FOREIGN KEY (host_id)
                     REFERENCES host (id) MATCH SIMPLE
                     ON UPDATE NO ACTION
@@ -158,10 +146,9 @@ $$
             (
                 operation CHAR(1)   NOT NULL,
                 changed   TIMESTAMP NOT NULL,
-                id        BIGINT,
+                host_id   BIGINT,
                 connected BOOLEAN,
-                time      TIMESTAMP(6) WITH TIME ZONE,
-                host_id   BIGINT
+                last_seen TIMESTAMP(6) WITH TIME ZONE
             ) WITH (OIDS = FALSE)
               TABLESPACE pg_default;
 
