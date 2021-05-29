@@ -178,5 +178,23 @@ $$
             ALTER TABLE status_history
                 OWNER to rem;
         END IF;
+
+        ---------------------------------------------------------------------------
+        -- ADMISSION (hosts authorised for management)
+        ---------------------------------------------------------------------------
+        IF NOT EXISTS(SELECT relname FROM pg_class WHERE relname = 'admission')
+        THEN
+            CREATE TABLE "admission"
+            (
+                host_key VARCHAR(100),
+                active   BOOLEAN,
+                tag      TEXT[],
+                CONSTRAINT admission_host_key_pk PRIMARY KEY (host_key)
+            ) WITH (OIDS = FALSE)
+              TABLESPACE pg_default;
+
+            ALTER TABLE "admission"
+                OWNER to rem;
+        END IF;
     END;
 $$
