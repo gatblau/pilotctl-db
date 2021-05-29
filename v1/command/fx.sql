@@ -57,8 +57,8 @@ $$
                    CASE WHEN h.last_seen < now() - after THEN false ELSE true END,
                    h.last_seen
             FROM host h
-             LEFT JOIN status s
-               ON s.host_id = h.id
+                     LEFT JOIN status s
+                               ON s.host_id = h.id
             WHERE s.host_id IS NULL;
 
             -- update existing hosts in the status table
@@ -67,8 +67,8 @@ $$
                 connected=CASE WHEN h.last_seen < now() - after THEN false ELSE true END,
                 last_seen=h.last_seen
             FROM host h
-            LEFT JOIN status s
-              ON s.host_id = h.id
+                     LEFT JOIN status s
+                               ON s.host_id = h.id
             WHERE s.host_id IS NOT NULL
               AND s.connected <> CASE WHEN h.last_seen < now() - after THEN false ELSE true END;
         END ;
@@ -79,8 +79,8 @@ $$
         )
             RETURNS TABLE
                     (
-                        host       CHARACTER VARYING,
-                        connected  BOOLEAN,
+                        host      CHARACTER VARYING,
+                        connected BOOLEAN,
                         last_seen TIMESTAMP(6) WITH TIME ZONE
                     )
             LANGUAGE 'plpgsql'
@@ -92,8 +92,80 @@ $$
             RETURN QUERY
                 SELECT h.key as host, s.connected, s.last_seen
                 FROM status s
-                 INNER JOIN host h
-                    ON h.id = s.host_id;
+                         INNER JOIN host h
+                                    ON h.id = s.host_id;
+        END ;
+        $BODY$;
+
+        -- insert or update admission
+        CREATE OR REPLACE FUNCTION rem_set_admission(
+            host_key_param VARCHAR(100),
+            active_param BOOLEAN,
+            tag_param TEXT[]
+        )
+            RETURNS VOID
+            LANGUAGE 'plpgsql'
+            COST 100
+            VOLATILE
+        AS
+        $BODY$
+        BEGIN
+            INSERT INTO admission (host_key, active, tag)
+            VALUES(host_key_param, active_param, tag_param)
+            ON CONFLICT (host_key)
+                DO UPDATE
+                    SET active = active_param,
+                        tag = tag_param;
+        END ;
+        $BODY$;
+
+        -- get admission status
+        CREATE OR REPLACE FUNCTION rem_is_admitted(
+            host_key_param VARCHAR(100)
+        )
+            RETURNS BOOLEAN
+            LANGUAGE 'plpgsql'
+            COST 100
+            VOLATILE
+        AS
+        $BODY$
+        DECLARE
+            admitted BOOLEAN;
+        BEGIN
+            SELECT EXISTS INTO admitted (
+                SELECT 1
+                FROM admission
+                WHERE host_key = host_key_param
+                  AND active = TRUE
+            );
+            RETURN admitted;
+        END ;
+        $BODY$;
+
+        -- get admissions by tag or all admissions if tag is null
+        CREATE OR REPLACE FUNCTION rem_get_admissions(
+            tag_param TEXT[]
+        )
+            RETURNS TABLE
+            (
+                host_key  CHARACTER VARYING,
+                active    BOOLEAN,
+                tag       TEXT[]
+            )
+            LANGUAGE 'plpgsql'
+            COST 100
+            VOLATILE
+        AS
+        $BODY$
+        DECLARE
+            admitted BOOLEAN;
+        BEGIN
+            RETURN QUERY
+                SELECT a.host_key,
+                       a.active,
+                       a.tag
+            FROM admission a
+            WHERE (a.tag @> tag_param OR tag_param IS NULL);
         END ;
         $BODY$;
     END
