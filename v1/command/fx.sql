@@ -81,7 +81,10 @@ $$
                     (
                         host      CHARACTER VARYING,
                         connected BOOLEAN,
-                        last_seen TIMESTAMP(6) WITH TIME ZONE
+                        since TIMESTAMP(6) WITH TIME ZONE,
+                        customer CHARACTER VARYING,
+                        region CHARACTER VARYING,
+                        location CHARACTER VARYING
                     )
             LANGUAGE 'plpgsql'
             COST 100
