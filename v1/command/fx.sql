@@ -90,10 +90,10 @@ $$
         $BODY$
         BEGIN
             RETURN QUERY
-                SELECT h.key as host, s.connected, s.last_seen
+                SELECT h.key as host, s.connected, s.since, h.customer, h.region, h.location
                 FROM status s
-                         INNER JOIN host h
-                                    ON h.id = s.host_id;
+                 INNER JOIN host h
+                    ON h.id = s.host_id;
         END ;
         $BODY$;
 

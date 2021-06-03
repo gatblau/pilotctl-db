@@ -34,6 +34,9 @@ $$
             (
                 id        BIGINT                 NOT NULL DEFAULT nextval('host_id_seq'::regclass),
                 key       CHARACTER VARYING(100) NOT NULL,
+                customer  CHARACTER VARYING(100),
+                region    CHARACTER VARYING(100),
+                location  CHARACTER VARYING(100),
                 last_seen TIMESTAMP(6) WITH TIME ZONE,
                 CONSTRAINT host_id_pk PRIMARY KEY (id),
                 CONSTRAINT host_key_uc UNIQUE (key)
