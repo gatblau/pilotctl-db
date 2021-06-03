@@ -124,7 +124,7 @@ $$
             (
                 host_id   BIGINT,
                 connected BOOLEAN,
-                last_seen TIMESTAMP(6) WITH TIME ZONE,
+                since TIMESTAMP(6) WITH TIME ZONE,
                 CONSTRAINT status_host_id_pk PRIMARY KEY (host_id),
                 CONSTRAINT status_host_id_fk FOREIGN KEY (host_id)
                     REFERENCES host (id) MATCH SIMPLE
@@ -148,7 +148,7 @@ $$
                 changed   TIMESTAMP NOT NULL,
                 host_id   BIGINT,
                 connected BOOLEAN,
-                last_seen TIMESTAMP(6) WITH TIME ZONE
+                since TIMESTAMP(6) WITH TIME ZONE
             ) WITH (OIDS = FALSE)
               TABLESPACE pg_default;
 
