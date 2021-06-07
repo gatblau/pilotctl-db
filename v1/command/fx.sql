@@ -171,5 +171,29 @@ $$
             WHERE (a.tag @> tag_param OR tag_param IS NULL);
         END ;
         $BODY$;
+
+        -- insert or update a command definition
+        CREATE OR REPLACE FUNCTION pilotctl_set_command(
+            package_param VARCHAR(100),
+            fx_param VARCHAR(100),
+            input_param HSTORE
+        )
+            RETURNS VOID
+            LANGUAGE 'plpgsql'
+            COST 100
+            VOLATILE
+        AS
+        $BODY$
+        BEGIN
+            INSERT INTO comm (package, fx, input)
+            VALUES(package_param, fx_param, input_param)
+            ON CONFLICT (id)
+                DO UPDATE
+                SET package = package_param,
+                    fx = fx_param,
+                    input = input_param;
+        END ;
+        $BODY$;
+
     END
 $$
