@@ -41,7 +41,7 @@ $$
         $BODY$;
 
         -- record server side connected/disconnected events using information in host table
-        CREATE OR REPLACE FUNCTION rem_record_conn_status(
+        CREATE OR REPLACE FUNCTION pilotctl_record_conn_status(
             after INTERVAL
         )
             RETURNS VOID
@@ -75,7 +75,7 @@ $$
         $BODY$;
 
         -- return connection status
-        CREATE OR REPLACE FUNCTION rem_get_conn_status(
+        CREATE OR REPLACE FUNCTION pilotctl_get_conn_status(
         )
             RETURNS TABLE
                     (
@@ -101,7 +101,7 @@ $$
         $BODY$;
 
         -- insert or update admission
-        CREATE OR REPLACE FUNCTION rem_set_admission(
+        CREATE OR REPLACE FUNCTION pilotctl_set_admission(
             host_key_param VARCHAR(100),
             active_param BOOLEAN,
             tag_param TEXT[]
@@ -123,7 +123,7 @@ $$
         $BODY$;
 
         -- get admission status
-        CREATE OR REPLACE FUNCTION rem_is_admitted(
+        CREATE OR REPLACE FUNCTION pilotctl_is_admitted(
             host_key_param VARCHAR(100)
         )
             RETURNS BOOLEAN
@@ -146,7 +146,7 @@ $$
         $BODY$;
 
         -- get admissions by tag or all admissions if tag is null
-        CREATE OR REPLACE FUNCTION rem_get_admissions(
+        CREATE OR REPLACE FUNCTION pilotctl_get_admissions(
             tag_param TEXT[]
         )
             RETURNS TABLE

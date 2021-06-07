@@ -44,7 +44,7 @@ $$
               TABLESPACE pg_default;
 
             ALTER TABLE "host"
-                OWNER to rem;
+                OWNER to pilotctl;
         END IF;
 
         ---------------------------------------------------------------------------
@@ -60,7 +60,7 @@ $$
                 CACHE 1;
 
             ALTER SEQUENCE comm_id_seq
-                OWNER TO rem;
+                OWNER TO pilotctl;
 
             CREATE TABLE "comm"
             (
@@ -75,7 +75,7 @@ $$
               TABLESPACE pg_default;
 
             ALTER TABLE "comm"
-                OWNER to rem;
+                OWNER to pilotctl;
         END IF;
 
         ---------------------------------------------------------------------------
@@ -91,7 +91,7 @@ $$
                 CACHE 1;
 
             ALTER SEQUENCE job_id_seq
-                OWNER TO rem;
+                OWNER TO pilotctl;
 
             CREATE TABLE "job"
             (
@@ -115,7 +115,7 @@ $$
               TABLESPACE pg_default;
 
             ALTER TABLE "job"
-                OWNER to rem;
+                OWNER to pilotctl;
         END IF;
 
         ---------------------------------------------------------------------------
@@ -137,7 +137,7 @@ $$
               TABLESPACE pg_default;
 
             ALTER TABLE "status"
-                OWNER to rem;
+                OWNER to pilotctl;
         END IF;
 
         ---------------------------------------------------------------------------
@@ -155,8 +155,8 @@ $$
             ) WITH (OIDS = FALSE)
               TABLESPACE pg_default;
 
-            CREATE OR REPLACE FUNCTION rem_change_status() RETURNS TRIGGER AS
-            $rem_change_status$
+            CREATE OR REPLACE FUNCTION pilotctl_change_status() RETURNS TRIGGER AS
+            $pilotctl_change_status$
             BEGIN
                 IF (TG_OP = 'DELETE') THEN
                     INSERT INTO status_history SELECT 'D', now(), OLD.*;
@@ -170,16 +170,16 @@ $$
                 END IF;
                 RETURN NULL; -- result is ignored since this is an AFTER trigger
             END;
-            $rem_change_status$ LANGUAGE plpgsql;
+            $pilotctl_change_status$ LANGUAGE plpgsql;
 
             CREATE TRIGGER status_change
                 AFTER INSERT OR UPDATE OR DELETE
                 ON status
                 FOR EACH ROW
-            EXECUTE PROCEDURE rem_change_status();
+            EXECUTE PROCEDURE pilotctl_change_status();
 
             ALTER TABLE status_history
-                OWNER to rem;
+                OWNER to pilotctl;
         END IF;
 
         ---------------------------------------------------------------------------
@@ -197,7 +197,7 @@ $$
               TABLESPACE pg_default;
 
             ALTER TABLE "admission"
-                OWNER to rem;
+                OWNER to pilotctl;
         END IF;
     END;
 $$
