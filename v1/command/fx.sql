@@ -16,7 +16,7 @@ DO
 $$
     BEGIN
         -- inserts or updates the last_seen timestamp for a host
-        CREATE OR REPLACE FUNCTION rem_beat(
+        CREATE OR REPLACE FUNCTION pilotctl_beat(
             host_key_param CHARACTER VARYING(100)
         )
             RETURNS VOID
