@@ -28,7 +28,7 @@ $$
                 CACHE 1;
 
             ALTER SEQUENCE host_id_seq
-                OWNER TO rem;
+                OWNER TO pilotctl;
 
             CREATE TABLE "host"
             (
