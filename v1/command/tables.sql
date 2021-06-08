@@ -65,12 +65,14 @@ $$
             CREATE TABLE "comm"
             (
                 id      BIGINT                 NOT NULL DEFAULT nextval('comm_id_seq'::regclass),
+                name    CHARACTER VARYING(100) NOT NULL,
                 package CHARACTER VARYING(100) NOT NULL,
                 fx      CHARACTER VARYING(100) NOT NULL,
                 input   HSTORE,
                 created TIMESTAMP(6) WITH TIME ZONE     DEFAULT CURRENT_TIMESTAMP(6),
                 updated TIMESTAMP(6) WITH TIME ZONE     DEFAULT CURRENT_TIMESTAMP(6),
-                CONSTRAINT comm_id_pk PRIMARY KEY (id)
+                CONSTRAINT comm_id_pk PRIMARY KEY (id),
+                CONSTRAINT comm_name_uc UNIQUE (name)
             ) WITH (OIDS = FALSE)
               TABLESPACE pg_default;
 

@@ -174,6 +174,7 @@ $$
 
         -- insert or update a command definition
         CREATE OR REPLACE FUNCTION pilotctl_set_command(
+            name_param VARCHAR(100),
             package_param VARCHAR(100),
             fx_param VARCHAR(100),
             input_param HSTORE
@@ -185,9 +186,9 @@ $$
         AS
         $BODY$
         BEGIN
-            INSERT INTO comm (package, fx, input)
-            VALUES(package_param, fx_param, input_param)
-            ON CONFLICT (id)
+            INSERT INTO comm (name, package, fx, input)
+            VALUES(name_param, package_param, fx_param, input_param)
+            ON CONFLICT (name)
                 DO UPDATE
                 SET package = package_param,
                     fx = fx_param,
