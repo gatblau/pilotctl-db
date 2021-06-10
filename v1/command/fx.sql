@@ -187,7 +187,7 @@ $$
         AS
         $BODY$
         BEGIN
-            INSERT INTO comm (name, description, package, fx, input)
+            INSERT INTO command (name, description, package, fx, input)
             VALUES(name_param, description_param, package_param, fx_param, input_param)
             ON CONFLICT (name)
                 DO UPDATE
