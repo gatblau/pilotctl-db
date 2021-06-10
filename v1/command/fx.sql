@@ -220,14 +220,14 @@ $$
         $BODY$
         BEGIN
             RETURN QUERY
-                SELECT id,
-                       name,
-                       description,
-                       package,
-                       fx,
-                       input,
-                       created,
-                       updated
+                SELECT c.id,
+                       c.name,
+                       c.description,
+                       c.package,
+                       c.fx,
+                       c.input,
+                       c.created,
+                       c.updated
                 FROM command c
                 WHERE (c.name = name_param OR name_param IS NULL);
         END ;
