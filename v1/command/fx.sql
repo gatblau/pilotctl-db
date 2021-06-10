@@ -175,6 +175,7 @@ $$
         -- insert or update a command definition
         CREATE OR REPLACE FUNCTION pilotctl_set_command(
             name_param VARCHAR(100),
+            description_param TEXT,
             package_param VARCHAR(100),
             fx_param VARCHAR(100),
             input_param HSTORE
@@ -186,13 +187,49 @@ $$
         AS
         $BODY$
         BEGIN
-            INSERT INTO comm (name, package, fx, input)
-            VALUES(name_param, package_param, fx_param, input_param)
+            INSERT INTO comm (name, description, package, fx, input)
+            VALUES(name_param, description_param, package_param, fx_param, input_param)
             ON CONFLICT (name)
                 DO UPDATE
-                SET package = package_param,
+                SET description = description_param,
+                    package = package_param,
                     fx = fx_param,
                     input = input_param;
+        END ;
+        $BODY$;
+
+        -- return connection status
+        CREATE OR REPLACE FUNCTION pilotctl_get_command(
+            name_param VARCHAR(100)
+        )
+            RETURNS TABLE
+                    (
+                        id          BIGINT,
+                        name        CHARACTER VARYING(100),
+                        description TEXT,
+                        package     CHARACTER VARYING(100),
+                        fx          CHARACTER VARYING(100),
+                        input       HSTORE,
+                        created     TIMESTAMP(6) WITH TIME ZONE,
+                        updated     TIMESTAMP(6) WITH TIME ZONE
+                    )
+            LANGUAGE 'plpgsql'
+            COST 100
+            VOLATILE
+        AS
+        $BODY$
+        BEGIN
+            RETURN QUERY
+                SELECT id,
+                       name,
+                       description,
+                       package,
+                       fx,
+                       input,
+                       created,
+                       updated
+                FROM command c
+                WHERE (c.name = name_param OR name_param IS NULL);
         END ;
         $BODY$;
 

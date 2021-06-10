@@ -48,35 +48,36 @@ $$
         END IF;
 
         ---------------------------------------------------------------------------
-        -- COMM (store the definition of commands that can be executed on remote hosts)
+        -- COMMAND (store the definition of commands that can be executed on remote hosts)
         ---------------------------------------------------------------------------
-        IF NOT EXISTS(SELECT relname FROM pg_class WHERE relname = 'comm')
+        IF NOT EXISTS(SELECT relname FROM pg_class WHERE relname = 'command')
         THEN
-            CREATE SEQUENCE comm_id_seq
+            CREATE SEQUENCE command_id_seq
                 INCREMENT 1
                 START 1000
                 MINVALUE 1000
                 MAXVALUE 9223372036854775807
                 CACHE 1;
 
-            ALTER SEQUENCE comm_id_seq
+            ALTER SEQUENCE command_id_seq
                 OWNER TO pilotctl;
 
-            CREATE TABLE "comm"
+            CREATE TABLE "command"
             (
-                id      BIGINT                 NOT NULL DEFAULT nextval('comm_id_seq'::regclass),
-                name    CHARACTER VARYING(100) NOT NULL,
-                package CHARACTER VARYING(100) NOT NULL,
-                fx      CHARACTER VARYING(100) NOT NULL,
-                input   HSTORE,
-                created TIMESTAMP(6) WITH TIME ZONE     DEFAULT CURRENT_TIMESTAMP(6),
-                updated TIMESTAMP(6) WITH TIME ZONE     DEFAULT CURRENT_TIMESTAMP(6),
-                CONSTRAINT comm_id_pk PRIMARY KEY (id),
-                CONSTRAINT comm_name_uc UNIQUE (name)
+                id          BIGINT                 NOT NULL DEFAULT nextval('command_id_seq'::regclass),
+                name        CHARACTER VARYING(100) NOT NULL,
+                description TEXT,
+                package     CHARACTER VARYING(100) NOT NULL,
+                fx          CHARACTER VARYING(100) NOT NULL,
+                input       HSTORE,
+                created     TIMESTAMP(6) WITH TIME ZONE     DEFAULT CURRENT_TIMESTAMP(6),
+                updated     TIMESTAMP(6) WITH TIME ZONE     DEFAULT CURRENT_TIMESTAMP(6),
+                CONSTRAINT command_id_pk PRIMARY KEY (id),
+                CONSTRAINT command_name_uc UNIQUE (name)
             ) WITH (OIDS = FALSE)
               TABLESPACE pg_default;
 
-            ALTER TABLE "comm"
+            ALTER TABLE "command"
                 OWNER to pilotctl;
         END IF;
 
@@ -99,7 +100,7 @@ $$
             (
                 id        BIGINT NOT NULL             DEFAULT nextval('job_id_seq'::regclass),
                 host_id   BIGINT NOT NULL,
-                comm_id   BIGINT NOT NULL,
+                command_id   BIGINT NOT NULL,
                 result    TEXT,
                 created   TIMESTAMP(6) WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP(6),
                 started   TIMESTAMP(6) WITH TIME ZONE,
@@ -109,8 +110,8 @@ $$
                     REFERENCES host (id) MATCH SIMPLE
                     ON UPDATE NO ACTION
                     ON DELETE CASCADE,
-                CONSTRAINT job_comm_id_fk FOREIGN KEY (comm_id)
-                    REFERENCES comm (id) MATCH SIMPLE
+                CONSTRAINT job_comm_id_fk FOREIGN KEY (command_id)
+                    REFERENCES command (id) MATCH SIMPLE
                     ON UPDATE NO ACTION
                     ON DELETE CASCADE
             ) WITH (OIDS = FALSE)
