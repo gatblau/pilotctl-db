@@ -233,5 +233,29 @@ $$
         END ;
         $BODY$;
 
+        -- create a new job for executing a command on a host
+        CREATE OR REPLACE FUNCTION pilotctl_create_job(
+            host_key_param VARCHAR(100),
+            command_name_param VARCHAR(100)
+        )
+            RETURNS VOID
+            LANGUAGE 'plpgsql'
+            COST 100
+            VOLATILE
+        AS
+        $BODY$
+        DECLARE
+            host_id_var BIGINT;
+            command_id_var BIGINT;
+        BEGIN
+            -- capture the host surrogate key
+            SELECT h.id FROM host h WHERE h.key = host_key_param INTO host_id_var;
+            -- capture the command surrogate key
+            SELECT c.id FROM command c WHERE c.name = command_name_param INTO command_id_var;
+            -- insert a job entry
+            INSERT INTO job (host_id, command_id, created) VALUES(host_id_var, command_id_var, now());
+        END ;
+        $BODY$;
+
     END
 $$
