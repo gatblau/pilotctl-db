@@ -69,7 +69,7 @@ $$
                 description TEXT,
                 package     CHARACTER VARYING(100) NOT NULL,
                 fx          CHARACTER VARYING(100) NOT NULL,
-                input       HSTORE,
+                input       JSONB,
                 created     TIMESTAMP(6) WITH TIME ZONE     DEFAULT CURRENT_TIMESTAMP(6),
                 updated     TIMESTAMP(6) WITH TIME ZONE     DEFAULT CURRENT_TIMESTAMP(6),
                 CONSTRAINT command_id_pk PRIMARY KEY (id),

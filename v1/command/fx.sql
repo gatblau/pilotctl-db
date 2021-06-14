@@ -178,7 +178,7 @@ $$
             description_param TEXT,
             package_param VARCHAR(100),
             fx_param VARCHAR(100),
-            input_param HSTORE
+            input_param JSONB
         )
             RETURNS VOID
             LANGUAGE 'plpgsql'
@@ -209,7 +209,7 @@ $$
                         description TEXT,
                         package     CHARACTER VARYING(100),
                         fx          CHARACTER VARYING(100),
-                        input       HSTORE,
+                        input       JSONB,
                         created     TIMESTAMP(6) WITH TIME ZONE,
                         updated     TIMESTAMP(6) WITH TIME ZONE
                     )
