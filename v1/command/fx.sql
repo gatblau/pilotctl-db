@@ -1,5 +1,5 @@
 /*
-    Onix Pilot Remote Control Service - Copyright (c) 2018-2021 by www.gatblau.org
+    Onix Pilot Control Service - Copyright (c) 2018-2021 by www.gatblau.org
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
@@ -81,10 +81,10 @@ $$
                     (
                         host      CHARACTER VARYING,
                         connected BOOLEAN,
-                        since TIMESTAMP(6) WITH TIME ZONE,
-                        customer CHARACTER VARYING,
-                        region CHARACTER VARYING,
-                        location CHARACTER VARYING
+                        since     TIMESTAMP(6) WITH TIME ZONE,
+                        customer  CHARACTER VARYING,
+                        region    CHARACTER VARYING,
+                        location  CHARACTER VARYING
                     )
             LANGUAGE 'plpgsql'
             COST 100
@@ -95,8 +95,8 @@ $$
             RETURN QUERY
                 SELECT h.key as host, s.connected, s.since, h.customer, h.region, h.location
                 FROM status s
-                 INNER JOIN host h
-                    ON h.id = s.host_id;
+                         INNER JOIN host h
+                                    ON h.id = s.host_id;
         END ;
         $BODY$;
 
@@ -114,11 +114,11 @@ $$
         $BODY$
         BEGIN
             INSERT INTO admission (host_key, active, tag)
-            VALUES(host_key_param, active_param, tag_param)
+            VALUES (host_key_param, active_param, tag_param)
             ON CONFLICT (host_key)
                 DO UPDATE
-                    SET active = active_param,
-                        tag = tag_param;
+                SET active = active_param,
+                    tag    = tag_param;
         END ;
         $BODY$;
 
@@ -136,11 +136,10 @@ $$
             admitted BOOLEAN;
         BEGIN
             SELECT EXISTS INTO admitted (
-                SELECT 1
-                FROM admission
-                WHERE host_key = host_key_param
-                  AND active = TRUE
-            );
+            SELECT 1
+            FROM admission
+            WHERE host_key = host_key_param
+              AND active = TRUE );
             RETURN admitted;
         END ;
         $BODY$;
@@ -150,11 +149,11 @@ $$
             tag_param TEXT[]
         )
             RETURNS TABLE
-            (
-                host_key  CHARACTER VARYING,
-                active    BOOLEAN,
-                tag       TEXT[]
-            )
+                    (
+                        host_key CHARACTER VARYING,
+                        active   BOOLEAN,
+                        tag      TEXT[]
+                    )
             LANGUAGE 'plpgsql'
             COST 100
             VOLATILE
@@ -167,8 +166,8 @@ $$
                 SELECT a.host_key,
                        a.active,
                        a.tag
-            FROM admission a
-            WHERE (a.tag @> tag_param OR tag_param IS NULL);
+                FROM admission a
+                WHERE (a.tag @> tag_param OR tag_param IS NULL);
         END ;
         $BODY$;
 
@@ -188,13 +187,13 @@ $$
         $BODY$
         BEGIN
             INSERT INTO command (name, description, package, fx, input)
-            VALUES(name_param, description_param, package_param, fx_param, input_param)
+            VALUES (name_param, description_param, package_param, fx_param, input_param)
             ON CONFLICT (name)
                 DO UPDATE
                 SET description = description_param,
-                    package = package_param,
-                    fx = fx_param,
-                    input = input_param;
+                    package     = package_param,
+                    fx          = fx_param,
+                    input       = input_param;
         END ;
         $BODY$;
 
@@ -245,7 +244,7 @@ $$
         AS
         $BODY$
         DECLARE
-            host_id_var BIGINT;
+            host_id_var    BIGINT;
             command_id_var BIGINT;
         BEGIN
             -- capture the host surrogate key
@@ -253,9 +252,87 @@ $$
             -- capture the command surrogate key
             SELECT c.id FROM command c WHERE c.name = command_name_param INTO command_id_var;
             -- insert a job entry
-            INSERT INTO job (host_id, command_id, created) VALUES(host_id_var, command_id_var, now());
+            INSERT INTO job (host_id, command_id, created) VALUES (host_id_var, command_id_var, now());
         END ;
         $BODY$;
 
-    END
+        -- get number of jobs scheduled but not yet started for a host
+        CREATE OR REPLACE FUNCTION pilotctl_scheduled_jobs(
+            host_key_param VARCHAR(100)
+        )
+            RETURNS INT
+            LANGUAGE 'plpgsql'
+            COST 100
+            VOLATILE
+        AS
+        $BODY$
+        DECLARE
+            count INT;
+        BEGIN
+            count := (
+                SELECT COUNT(*) as jobs_in_progress
+                FROM job j
+                         INNER JOIN host h ON h.id = j.host_id
+                WHERE h.key = host_key_param
+                  AND j.scheduled IS NOT NULL
+                  AND j.started IS NULL
+            );
+            RETURN count;
+        END;
+        $BODY$;
+
+        -- gets the next job for a host
+        -- if no job is available then returned job_id is -1
+        -- if a job is found, its status is changed from "created" to "scheduled"
+        CREATE OR REPLACE FUNCTION pilotctl_get_next_job(
+            host_key_param VARCHAR(100)
+        )
+            RETURNS TABLE
+                    (
+                        job_id  BIGINT,
+                        package CHARACTER VARYING(100),
+                        fx      CHARACTER VARYING(100),
+                        input   JSONB
+                    )
+            LANGUAGE 'plpgsql'
+            COST 100
+            VOLATILE
+        AS
+        $BODY$
+        DECLARE
+            job_id_var  BIGINT;
+            package_var CHARACTER VARYING(100);
+            fx_var      CHARACTER VARYING(100);
+            input_var   JSONB;
+        BEGIN
+            -- identify oldest job that needs scheduling only if no other jobs have been already scheduled
+            -- and are waiting to start
+            SELECT j.id, c.package, c.fx, c.input
+            INTO job_id_var, package_var, fx_var, input_var
+            FROM job j
+                     INNER JOIN host h ON h.id = j.host_id
+                     INNER JOIN command c ON c.id = j.command_id
+            WHERE h.key = host_key_param
+              -- job has not been picked by the service yet
+              AND j.scheduled IS NULL
+              -- there are no other jobs scheduled and waiting to start for the host_key_param
+              AND pilotctl_scheduled_jobs(host_key_param) = 0
+              -- older job first
+            ORDER BY j.created ASC
+                     -- only interested in one job at a time
+            LIMIT 1;
+
+            IF FOUND THEN
+                -- change the job status to scheduled
+                UPDATE job SET scheduled = NOW() WHERE id = job_id_var;
+            ELSE
+                -- ensure the return value is less than zero to indicate a job has not been found
+                job_id_var = -1;
+            END IF;
+            -- return the result
+            RETURN QUERY
+                SELECT job_id_var, package_var, fx_var, input_var;
+        END;
+        $BODY$;
+    END;
 $$
