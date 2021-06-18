@@ -101,10 +101,18 @@ $$
                 id        BIGINT NOT NULL             DEFAULT nextval('job_id_seq'::regclass),
                 host_id   BIGINT NOT NULL,
                 command_id   BIGINT NOT NULL,
-                result    TEXT,
+                -- the client has requested the job to be executed
                 created   TIMESTAMP(6) WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP(6),
+                -- the service has picked the job for remote execution
+                scheduled TIMESTAMP(6) WITH TIME ZONE,
+                -- the service has delivered the job to the relevant remote pilot
                 started   TIMESTAMP(6) WITH TIME ZONE,
+                -- the service has received the completion information from the relevant remote pilot
                 completed TIMESTAMP(6) WITH TIME ZONE,
+                -- the remote execution log
+                log    TEXT,
+                -- true if the job has failed
+                error BOOLEAN,
                 CONSTRAINT job_id_pk PRIMARY KEY (id),
                 CONSTRAINT job_host_id_fk FOREIGN KEY (host_id)
                     REFERENCES host (id) MATCH SIMPLE
