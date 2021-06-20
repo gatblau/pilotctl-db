@@ -17,7 +17,7 @@ $$
     BEGIN
         -- inserts or updates the last_seen timestamp for a host
         CREATE OR REPLACE FUNCTION pilotctl_beat(
-            host_key_param CHARACTER VARYING(100)
+            machine_id_param CHARACTER VARYING(100)
         )
             RETURNS VOID
             LANGUAGE 'plpgsql'
@@ -29,13 +29,17 @@ $$
             host_count SMALLINT;
         BEGIN
             -- checks if the entry exists
-            SELECT COUNT(*) FROM host WHERE key = host_key_param INTO host_count;
+            SELECT COUNT(*) FROM host WHERE machine_id = machine_id_param INTO host_count;
 
             -- if the host does not exist, insert a new entry
             IF host_count = 0 THEN
-                INSERT INTO host(key, last_seen) VALUES (host_key_param, now());
+                INSERT INTO host(machine_id, last_seen, in_service) VALUES (machine_id_param, now(), true);
             ELSE -- otherwise, update the last_seen timestamp
-                UPDATE host SET last_seen = now() WHERE key = host_key_param;
+                UPDATE host
+                SET last_seen = now(),
+                    -- any beat revert in_service flag to true
+                    in_service = true
+                WHERE machine_id = machine_id_param;
             END IF;
         END;
         $BODY$;
@@ -57,8 +61,7 @@ $$
                    CASE WHEN h.last_seen < now() - after THEN false ELSE true END,
                    h.last_seen
             FROM host h
-                     LEFT JOIN status s
-                               ON s.host_id = h.id
+            LEFT JOIN status s ON s.host_id = h.id
             WHERE s.host_id IS NULL;
 
             -- update existing hosts in the status table
@@ -67,8 +70,7 @@ $$
                 connected=CASE WHEN h.last_seen < now() - after THEN false ELSE true END,
                 since=h.last_seen
             FROM host h
-                     LEFT JOIN status s
-                               ON s.host_id = h.id
+            LEFT JOIN status s ON s.host_id = h.id
             WHERE s.host_id IS NOT NULL
               AND s.connected <> CASE WHEN h.last_seen < now() - after THEN false ELSE true END;
         END ;
@@ -78,14 +80,15 @@ $$
         CREATE OR REPLACE FUNCTION pilotctl_get_conn_status(
         )
             RETURNS TABLE
-                    (
-                        host      CHARACTER VARYING,
-                        connected BOOLEAN,
-                        since     TIMESTAMP(6) WITH TIME ZONE,
-                        customer  CHARACTER VARYING,
-                        region    CHARACTER VARYING,
-                        location  CHARACTER VARYING
-                    )
+            (
+                host       CHARACTER VARYING,
+                connected  BOOLEAN,
+                since      TIMESTAMP(6) WITH TIME ZONE,
+                customer   CHARACTER VARYING,
+                region     CHARACTER VARYING,
+                location   CHARACTER VARYING,
+                in_service BOOLEAN
+            )
             LANGUAGE 'plpgsql'
             COST 100
             VOLATILE
@@ -93,16 +96,22 @@ $$
         $BODY$
         BEGIN
             RETURN QUERY
-                SELECT h.key as host, s.connected, s.since, h.customer, h.region, h.location
+                SELECT h.machine_id,
+                       s.connected,
+                       s.since,
+                       h.customer,
+                       h.region,
+                       h.location,
+                       h.in_service
                 FROM status s
-                         INNER JOIN host h
-                                    ON h.id = s.host_id;
+                INNER JOIN host h
+                  ON h.id = s.host_id;
         END ;
         $BODY$;
 
         -- insert or update admission
         CREATE OR REPLACE FUNCTION pilotctl_set_admission(
-            host_key_param VARCHAR(100),
+            machine_id_param VARCHAR(100),
             active_param BOOLEAN,
             tag_param TEXT[]
         )
@@ -113,9 +122,9 @@ $$
         AS
         $BODY$
         BEGIN
-            INSERT INTO admission (host_key, active, tag)
-            VALUES (host_key_param, active_param, tag_param)
-            ON CONFLICT (host_key)
+            INSERT INTO admission (machine_id, active, tag)
+            VALUES (machine_id_param, active_param, tag_param)
+            ON CONFLICT (machine_id)
                 DO UPDATE
                 SET active = active_param,
                     tag    = tag_param;
@@ -124,7 +133,7 @@ $$
 
         -- get admission status
         CREATE OR REPLACE FUNCTION pilotctl_is_admitted(
-            host_key_param VARCHAR(100)
+            machine_id_param VARCHAR(100)
         )
             RETURNS BOOLEAN
             LANGUAGE 'plpgsql'
@@ -136,10 +145,11 @@ $$
             admitted BOOLEAN;
         BEGIN
             SELECT EXISTS INTO admitted (
-            SELECT 1
-            FROM admission
-            WHERE host_key = host_key_param
-              AND active = TRUE );
+                SELECT 1
+                FROM admission
+                -- there is an entry for the machine id and is set to active
+                WHERE machine_id = machine_id_param AND active = TRUE
+            );
             RETURN admitted;
         END ;
         $BODY$;
@@ -149,21 +159,19 @@ $$
             tag_param TEXT[]
         )
             RETURNS TABLE
-                    (
-                        host_key CHARACTER VARYING,
-                        active   BOOLEAN,
-                        tag      TEXT[]
-                    )
+            (
+                machine_id CHARACTER VARYING,
+                active   BOOLEAN,
+                tag      TEXT[]
+            )
             LANGUAGE 'plpgsql'
             COST 100
             VOLATILE
         AS
         $BODY$
-        DECLARE
-            admitted BOOLEAN;
         BEGIN
             RETURN QUERY
-                SELECT a.host_key,
+                SELECT a.machine_id,
                        a.active,
                        a.tag
                 FROM admission a
@@ -202,16 +210,16 @@ $$
             name_param VARCHAR(100)
         )
             RETURNS TABLE
-                    (
-                        id          BIGINT,
-                        name        CHARACTER VARYING(100),
-                        description TEXT,
-                        package     CHARACTER VARYING(100),
-                        fx          CHARACTER VARYING(100),
-                        input       JSONB,
-                        created     TIMESTAMP(6) WITH TIME ZONE,
-                        updated     TIMESTAMP(6) WITH TIME ZONE
-                    )
+            (
+                id          BIGINT,
+                name        CHARACTER VARYING(100),
+                description TEXT,
+                package     CHARACTER VARYING(100),
+                fx          CHARACTER VARYING(100),
+                input       JSONB,
+                created     TIMESTAMP(6) WITH TIME ZONE,
+                updated     TIMESTAMP(6) WITH TIME ZONE
+            )
             LANGUAGE 'plpgsql'
             COST 100
             VOLATILE
@@ -234,7 +242,7 @@ $$
 
         -- create a new job for executing a command on a host
         CREATE OR REPLACE FUNCTION pilotctl_create_job(
-            host_key_param VARCHAR(100),
+            machine_id_param VARCHAR(100),
             command_name_param VARCHAR(100)
         )
             RETURNS VOID
@@ -248,7 +256,7 @@ $$
             command_id_var BIGINT;
         BEGIN
             -- capture the host surrogate key
-            SELECT h.id FROM host h WHERE h.key = host_key_param INTO host_id_var;
+            SELECT h.id FROM host h WHERE h.machine_id = machine_id_param INTO host_id_var;
             -- capture the command surrogate key
             SELECT c.id FROM command c WHERE c.name = command_name_param INTO command_id_var;
             -- insert a job entry
@@ -258,7 +266,7 @@ $$
 
         -- get number of jobs scheduled but not yet started for a host
         CREATE OR REPLACE FUNCTION pilotctl_scheduled_jobs(
-            host_key_param VARCHAR(100)
+            machine_id_param VARCHAR(100)
         )
             RETURNS INT
             LANGUAGE 'plpgsql'
@@ -272,8 +280,8 @@ $$
             count := (
                 SELECT COUNT(*) as jobs_in_progress
                 FROM job j
-                         INNER JOIN host h ON h.id = j.host_id
-                WHERE h.key = host_key_param
+                  INNER JOIN host h ON h.id = j.host_id
+                WHERE h.machine_id = machine_id_param
                   AND j.scheduled IS NOT NULL
                   AND j.started IS NULL
             );
@@ -285,15 +293,15 @@ $$
         -- if no job is available then returned job_id is -1
         -- if a job is found, its status is changed from "created" to "scheduled"
         CREATE OR REPLACE FUNCTION pilotctl_get_next_job(
-            host_key_param VARCHAR(100)
+            machine_id_param VARCHAR(100)
         )
             RETURNS TABLE
-                    (
-                        job_id  BIGINT,
-                        package CHARACTER VARYING(100),
-                        fx      CHARACTER VARYING(100),
-                        input   JSONB
-                    )
+            (
+                job_id  BIGINT,
+                package CHARACTER VARYING(100),
+                fx      CHARACTER VARYING(100),
+                input   JSONB
+            )
             LANGUAGE 'plpgsql'
             COST 100
             VOLATILE
@@ -312,14 +320,14 @@ $$
             FROM job j
                      INNER JOIN host h ON h.id = j.host_id
                      INNER JOIN command c ON c.id = j.command_id
-            WHERE h.key = host_key_param
+            WHERE h.machine_id = machine_id_param
               -- job has not been picked by the service yet
               AND j.scheduled IS NULL
               -- there are no other jobs scheduled and waiting to start for the host_key_param
-              AND pilotctl_scheduled_jobs(host_key_param) = 0
+              AND pilotctl_scheduled_jobs(machine_id_param) = 0
               -- older job first
             ORDER BY j.created ASC
-                     -- only interested in one job at a time
+            -- only interested in one job at a time
             LIMIT 1;
 
             IF FOUND THEN

@@ -32,14 +32,22 @@ $$
 
             CREATE TABLE "host"
             (
-                id        BIGINT                 NOT NULL DEFAULT nextval('host_id_seq'::regclass),
-                key       CHARACTER VARYING(100) NOT NULL,
-                customer  CHARACTER VARYING(100),
-                region    CHARACTER VARYING(100),
-                location  CHARACTER VARYING(100),
-                last_seen TIMESTAMP(6) WITH TIME ZONE,
+                -- the host surrogate key
+                id         BIGINT                 NOT NULL DEFAULT nextval('host_id_seq'::regclass),
+                -- the host machine id
+                machine_id CHARACTER VARYING(100) NOT NULL,
+                -- the natural key for the customer using the host
+                customer   CHARACTER VARYING(100),
+                -- the natural key for the region under which the host is deployed
+                region     CHARACTER VARYING(100),
+                -- the natural key for the physical location under which the host is deployed
+                location   CHARACTER VARYING(100),
+                -- when was the pilot last beat?
+                last_seen  TIMESTAMP(6) WITH TIME ZONE,
+                -- is the host supposed to be working or is it powered off / in transit / stored away?
+                in_service BOOLEAN,
                 CONSTRAINT host_id_pk PRIMARY KEY (id),
-                CONSTRAINT host_key_uc UNIQUE (key)
+                CONSTRAINT host_key_uc UNIQUE (machine_id)
             ) WITH (OIDS = FALSE)
               TABLESPACE pg_default;
 
@@ -200,10 +208,10 @@ $$
         THEN
             CREATE TABLE "admission"
             (
-                host_key VARCHAR(100),
+                machine_id VARCHAR(100),
                 active   BOOLEAN,
                 tag      TEXT[],
-                CONSTRAINT admission_host_key_pk PRIMARY KEY (host_key)
+                CONSTRAINT admission_host_key_pk PRIMARY KEY (machine_id)
             ) WITH (OIDS = FALSE)
               TABLESPACE pg_default;
 
