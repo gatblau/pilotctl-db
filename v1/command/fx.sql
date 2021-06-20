@@ -240,6 +240,8 @@ $$
         END ;
         $BODY$;
 
+        -- JOBS
+
         -- create a new job for executing a command on a host
         CREATE OR REPLACE FUNCTION pilotctl_create_job(
             machine_id_param VARCHAR(100),
@@ -341,5 +343,26 @@ $$
                 SELECT job_id_var, package_var, fx_var, input_var;
         END;
         $BODY$;
+
+        CREATE OR REPLACE FUNCTION pilotctl_complete_job(
+            job_id_param BIGINT,
+            log_param TEXT,
+            error_param BOOLEAN
+        )
+            RETURNS VOID
+            LANGUAGE 'plpgsql'
+            COST 100
+            VOLATILE
+        AS
+        $BODY$
+        BEGIN
+            UPDATE job
+            SET completed = NOW(),
+                log = log_param,
+                error = error_param
+            WHERE id = job_id_param;
+        END
+        $BODY$;
+
     END;
 $$
