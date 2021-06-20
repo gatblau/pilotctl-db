@@ -111,8 +111,6 @@ $$
                 command_id   BIGINT NOT NULL,
                 -- the client has requested the job to be executed
                 created   TIMESTAMP(6) WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP(6),
-                -- the service has picked the job for remote execution
-                scheduled TIMESTAMP(6) WITH TIME ZONE,
                 -- the service has delivered the job to the relevant remote pilot
                 started   TIMESTAMP(6) WITH TIME ZONE,
                 -- the service has received the completion information from the relevant remote pilot

@@ -205,7 +205,7 @@ $$
         END ;
         $BODY$;
 
-        -- return connection status
+        -- get command by name
         CREATE OR REPLACE FUNCTION pilotctl_get_command(
             name_param VARCHAR(100)
         )
@@ -282,7 +282,6 @@ $$
                 FROM job j
                   INNER JOIN host h ON h.id = j.host_id
                 WHERE h.machine_id = machine_id_param
-                  AND j.scheduled IS NOT NULL
                   AND j.started IS NULL
             );
             RETURN count;
@@ -322,7 +321,7 @@ $$
                      INNER JOIN command c ON c.id = j.command_id
             WHERE h.machine_id = machine_id_param
               -- job has not been picked by the service yet
-              AND j.scheduled IS NULL
+              AND j.started IS NULL
               -- there are no other jobs scheduled and waiting to start for the host_key_param
               AND pilotctl_scheduled_jobs(machine_id_param) = 0
               -- older job first
@@ -332,7 +331,7 @@ $$
 
             IF FOUND THEN
                 -- change the job status to scheduled
-                UPDATE job SET scheduled = NOW() WHERE id = job_id_var;
+                UPDATE job SET started = NOW() WHERE id = job_id_var;
             ELSE
                 -- ensure the return value is less than zero to indicate a job has not been found
                 job_id_var = -1;
