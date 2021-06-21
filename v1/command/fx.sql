@@ -295,9 +295,11 @@ $$
             count := (
                 SELECT COUNT(*) as jobs_in_progress
                 FROM job j
-                  INNER JOIN host h ON h.id = j.host_id
+                         INNER JOIN host h ON h.id = j.host_id
                 WHERE h.machine_id = machine_id_param
-                  AND j.started IS NULL
+                  -- jobs started but not completed
+                  AND j.started IS NOT NULL
+                  AND j.completed IS NULL
             );
             RETURN count;
         END;
