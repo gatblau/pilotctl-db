@@ -19,7 +19,13 @@ $$
         CREATE OR REPLACE FUNCTION pilotctl_beat(
             machine_id_param CHARACTER VARYING(100)
         )
-            RETURNS VOID
+            RETURNS TABLE
+            (
+                job_id  BIGINT,
+                package CHARACTER VARYING(100),
+                fx      CHARACTER VARYING(100),
+                input   JSONB
+            )
             LANGUAGE 'plpgsql'
             COST 100
             VOLATILE
@@ -30,7 +36,6 @@ $$
         BEGIN
             -- checks if the entry exists
             SELECT COUNT(*) FROM host WHERE machine_id = machine_id_param INTO host_count;
-
             -- if the host does not exist, insert a new entry
             IF host_count = 0 THEN
                 INSERT INTO host(machine_id, last_seen, in_service) VALUES (machine_id_param, now(), true);
@@ -41,6 +46,10 @@ $$
                     in_service = true
                 WHERE machine_id = machine_id_param;
             END IF;
+            -- finally get the next job for the machine id (if any exists, if not job_id < 0)
+            RETURN QUERY
+                SELECT j.job_id, j.package, j.fx, j.input
+                FROM pilotctl_get_next_job(machine_id_param) j;
         END;
         $BODY$;
 
@@ -108,6 +117,8 @@ $$
                   ON h.id = s.host_id;
         END ;
         $BODY$;
+
+        -- ADMISSIONS
 
         -- insert or update admission
         CREATE OR REPLACE FUNCTION pilotctl_set_admission(
@@ -178,6 +189,8 @@ $$
                 WHERE (a.tag @> tag_param OR tag_param IS NULL);
         END ;
         $BODY$;
+
+        -- COMMANDS
 
         -- insert or update a command definition
         CREATE OR REPLACE FUNCTION pilotctl_set_command(
@@ -344,6 +357,7 @@ $$
         END;
         $BODY$;
 
+        -- set a job as complete and updates status and log
         CREATE OR REPLACE FUNCTION pilotctl_complete_job(
             job_id_param BIGINT,
             log_param TEXT,
