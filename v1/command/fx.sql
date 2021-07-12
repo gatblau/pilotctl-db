@@ -190,75 +190,12 @@ $$
         END ;
         $BODY$;
 
-        -- COMMANDS
-
-        -- insert or update a command definition
-        CREATE OR REPLACE FUNCTION pilotctl_set_command(
-            name_param VARCHAR(100),
-            description_param TEXT,
-            package_param VARCHAR(100),
-            fx_param VARCHAR(100),
-            input_param JSONB
-        )
-            RETURNS VOID
-            LANGUAGE 'plpgsql'
-            COST 100
-            VOLATILE
-        AS
-        $BODY$
-        BEGIN
-            INSERT INTO command (name, description, package, fx, input)
-            VALUES (name_param, description_param, package_param, fx_param, input_param)
-            ON CONFLICT (name)
-                DO UPDATE
-                SET description = description_param,
-                    package     = package_param,
-                    fx          = fx_param,
-                    input       = input_param;
-        END ;
-        $BODY$;
-
-        -- get command by name
-        CREATE OR REPLACE FUNCTION pilotctl_get_command(
-            name_param VARCHAR(100)
-        )
-            RETURNS TABLE
-            (
-                id          BIGINT,
-                name        CHARACTER VARYING(100),
-                description TEXT,
-                package     CHARACTER VARYING(100),
-                fx          CHARACTER VARYING(100),
-                input       JSONB,
-                created     TIMESTAMP(6) WITH TIME ZONE,
-                updated     TIMESTAMP(6) WITH TIME ZONE
-            )
-            LANGUAGE 'plpgsql'
-            COST 100
-            VOLATILE
-        AS
-        $BODY$
-        BEGIN
-            RETURN QUERY
-                SELECT c.id,
-                       c.name,
-                       c.description,
-                       c.package,
-                       c.fx,
-                       c.input,
-                       c.created,
-                       c.updated
-                FROM command c
-                WHERE (c.name = name_param OR name_param IS NULL);
-        END ;
-        $BODY$;
-
         -- JOBS
 
         -- create a new job for executing a command on a host
         CREATE OR REPLACE FUNCTION pilotctl_create_job(
             machine_id_param VARCHAR(100),
-            command_name_param VARCHAR(100)
+            fx_key_param VARCHAR(100)
         )
             RETURNS VOID
             LANGUAGE 'plpgsql'
@@ -268,14 +205,11 @@ $$
         $BODY$
         DECLARE
             host_id_var    BIGINT;
-            command_id_var BIGINT;
         BEGIN
             -- capture the host surrogate key
             SELECT h.id FROM host h WHERE h.machine_id = machine_id_param INTO host_id_var;
-            -- capture the command surrogate key
-            SELECT c.id FROM command c WHERE c.name = command_name_param INTO command_id_var;
             -- insert a job entry
-            INSERT INTO job (host_id, command_id, created) VALUES (host_id_var, command_id_var, now());
+            INSERT INTO job (host_id, fx_key, created) VALUES (host_id_var, fx_key_param, now());
         END ;
         $BODY$;
 
@@ -324,18 +258,16 @@ $$
         AS
         $BODY$
         DECLARE
-            job_id_var  BIGINT;
-            package_var CHARACTER VARYING(100);
-            fx_var      CHARACTER VARYING(100);
-            input_var   JSONB;
+            job_id_var     BIGINT;
+            fx_key_var     CHARACTER VARYING(100);
+            fx_version_var CHARACTER VARYING(100);
         BEGIN
             -- identify oldest job that needs scheduling only if no other jobs have been already scheduled
             -- and are waiting to start
-            SELECT j.id, c.package, c.fx, c.input
-            INTO job_id_var, package_var, fx_var, input_var
+            SELECT j.id, j.fx_key, j.fx_version
+            INTO job_id_var, fx_key_var, fx_version_var
             FROM job j
                      INNER JOIN host h ON h.id = j.host_id
-                     INNER JOIN command c ON c.id = j.command_id
             WHERE h.machine_id = machine_id_param
               -- job has not been picked by the service yet
               AND j.started IS NULL
@@ -355,7 +287,7 @@ $$
             END IF;
             -- return the result
             RETURN QUERY
-                SELECT job_id_var, package_var, fx_var, input_var;
+                SELECT job_id_var, fx_key_var, fx_version_var;
         END;
         $BODY$;
 
