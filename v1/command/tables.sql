@@ -77,6 +77,8 @@ $$
                 host_id   BIGINT NOT NULL,
                 -- the natural key of the configuration item for the artisan function to execute
                 fx_key    CHARACTER VARYING(150),
+                -- version of the fx config item in Onix used for the job
+                fx_version BIGINT NOT NULL,
                 -- the client has requested the job to be executed
                 created   TIMESTAMP(6) WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP(6),
                 -- the service has delivered the job to the relevant remote pilot
