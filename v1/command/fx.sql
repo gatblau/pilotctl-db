@@ -247,10 +247,9 @@ $$
         )
             RETURNS TABLE
             (
-                job_id  BIGINT,
-                package CHARACTER VARYING(100),
-                fx      CHARACTER VARYING(100),
-                input   JSONB
+                job_id     BIGINT,
+                fx_key     CHARACTER VARYING(100),
+                fx_version BIGINT
             )
             LANGUAGE 'plpgsql'
             COST 100
