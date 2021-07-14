@@ -285,7 +285,7 @@ $$
             END IF;
             -- return the result
             RETURN QUERY
-                SELECT job_id_var, fx_key_var, fx_version_var;
+                SELECT COALESCE(job_id_var, -1), COALESCE(fx_key_var, ''), COALESCE(fx_version_var, -1);
         END;
         $BODY$;
 
