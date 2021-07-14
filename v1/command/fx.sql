@@ -258,7 +258,7 @@ $$
         DECLARE
             job_id_var     BIGINT;
             fx_key_var     CHARACTER VARYING(100);
-            fx_version_var CHARACTER VARYING(100);
+            fx_version_var BIGINT;
         BEGIN
             -- identify oldest job that needs scheduling only if no other jobs have been already scheduled
             -- and are waiting to start
