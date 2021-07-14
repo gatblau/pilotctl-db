@@ -21,10 +21,9 @@ $$
         )
             RETURNS TABLE
             (
-                job_id  BIGINT,
-                package CHARACTER VARYING(100),
-                fx      CHARACTER VARYING(100),
-                input   JSONB
+                job_id     BIGINT,
+                fx_key     CHARACTER VARYING(100),
+                fx_version BIGINT
             )
             LANGUAGE 'plpgsql'
             COST 100
@@ -48,7 +47,7 @@ $$
             END IF;
             -- finally get the next job for the machine id (if any exists, if not job_id < 0)
             RETURN QUERY
-                SELECT j.job_id, j.package, j.fx, j.input
+                SELECT j.job_id, j.fx_key, j.fx_version
                 FROM pilotctl_get_next_job(machine_id_param) j;
         END;
         $BODY$;
