@@ -36,10 +36,12 @@ $$
                 id         BIGINT                 NOT NULL DEFAULT nextval('host_id_seq'::regclass),
                 -- the host machine id
                 machine_id CHARACTER VARYING(100) NOT NULL,
-                -- the natural key for the customer using the host
-                customer   CHARACTER VARYING(100),
+                -- the natural key for the parent organisation using the host
+                parent_org CHARACTER VARYING(100),
+                -- the natural key for the organisation using the host
+                org        CHARACTER VARYING(100),
                 -- the natural key for the region under which the host is deployed
-                region     CHARACTER VARYING(100),
+                area       CHARACTER VARYING(100),
                 -- the natural key for the physical location under which the host is deployed
                 location   CHARACTER VARYING(100),
                 -- when was the pilot last beat?
@@ -72,23 +74,23 @@ $$
 
             CREATE TABLE "job"
             (
-                id        BIGINT NOT NULL             DEFAULT nextval('job_id_seq'::regclass),
+                id         BIGINT NOT NULL             DEFAULT nextval('job_id_seq'::regclass),
                 -- the surrogate key of the host where the job should be executed
-                host_id   BIGINT NOT NULL,
+                host_id    BIGINT NOT NULL,
                 -- the natural key of the configuration item for the artisan function to execute
-                fx_key    CHARACTER VARYING(150),
+                fx_key     CHARACTER VARYING(150),
                 -- version of the fx config item in Onix used for the job
                 fx_version BIGINT NOT NULL,
                 -- the client has requested the job to be executed
-                created   TIMESTAMP(6) WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP(6),
+                created    TIMESTAMP(6) WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP(6),
                 -- the service has delivered the job to the relevant remote pilot
-                started   TIMESTAMP(6) WITH TIME ZONE,
+                started    TIMESTAMP(6) WITH TIME ZONE,
                 -- the service has received the completion information from the relevant remote pilot
-                completed TIMESTAMP(6) WITH TIME ZONE,
+                completed  TIMESTAMP(6) WITH TIME ZONE,
                 -- the remote execution log
-                log       TEXT,
+                log        TEXT,
                 -- true if the job has failed
-                error     BOOLEAN,
+                error      BOOLEAN,
                 CONSTRAINT job_id_pk PRIMARY KEY (id),
                 CONSTRAINT job_host_id_fk FOREIGN KEY (host_id)
                     REFERENCES host (id) MATCH SIMPLE
@@ -110,7 +112,7 @@ $$
             (
                 host_id   BIGINT,
                 connected BOOLEAN,
-                since TIMESTAMP(6) WITH TIME ZONE,
+                since     TIMESTAMP(6) WITH TIME ZONE,
                 CONSTRAINT status_host_id_pk PRIMARY KEY (host_id),
                 CONSTRAINT status_host_id_fk FOREIGN KEY (host_id)
                     REFERENCES host (id) MATCH SIMPLE
@@ -134,7 +136,7 @@ $$
                 changed   TIMESTAMP NOT NULL,
                 host_id   BIGINT,
                 connected BOOLEAN,
-                since TIMESTAMP(6) WITH TIME ZONE
+                since     TIMESTAMP(6) WITH TIME ZONE
             ) WITH (OIDS = FALSE)
               TABLESPACE pg_default;
 
@@ -173,8 +175,8 @@ $$
             CREATE TABLE "admission"
             (
                 machine_id VARCHAR(100),
-                active   BOOLEAN,
-                tag      TEXT[],
+                active     BOOLEAN,
+                tag        TEXT[],
                 CONSTRAINT admission_host_key_pk PRIMARY KEY (machine_id)
             ) WITH (OIDS = FALSE)
               TABLESPACE pg_default;
