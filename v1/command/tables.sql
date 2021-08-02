@@ -184,5 +184,46 @@ $$
             ALTER TABLE "admission"
                 OWNER to pilotctl;
         END IF;
+
+        ---------------------------------------------------------------------------
+        -- EVENT
+        ---------------------------------------------------------------------------
+        IF NOT EXISTS(SELECT relname FROM pg_class WHERE relname = 'event')
+        THEN
+            CREATE SEQUENCE event_id_seq
+                INCREMENT 1
+                START 1000
+                MINVALUE 1000
+                MAXVALUE 9223372036854775807
+                CACHE 1;
+
+            ALTER SEQUENCE event_id_seq
+                OWNER TO pilotctl;
+
+            CREATE TABLE "event"
+            (
+                /* the unique id for the event */
+                id        BIGINT NOT NULL DEFAULT nextval('event_id_seq'::regclass),
+                /* is it related to a host? */
+                host_id   BIGINT,
+                /* time of occurrence */
+                time      TIMESTAMP(6) WITH TIME ZONE,
+                /* 5-digit code event type */
+                type      CHAR(5),
+                /* do we have an external system reference? */
+                ref_no    CHARACTER VARYING(20),
+                /* any event information */
+                info      TEXT,
+                CONSTRAINT event_id_pk PRIMARY KEY (id),
+                CONSTRAINT event_host_id_fk FOREIGN KEY (host_id)
+                    REFERENCES host (id) MATCH SIMPLE
+                    ON UPDATE NO ACTION
+                    ON DELETE CASCADE
+            ) WITH (OIDS = FALSE)
+              TABLESPACE pg_default;
+
+            ALTER TABLE "admission"
+                OWNER to pilotctl;
+        END IF;
     END;
 $$
