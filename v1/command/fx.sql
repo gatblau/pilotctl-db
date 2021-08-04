@@ -107,10 +107,12 @@ $$
                 SELECT h.machine_id,
                        s.connected,
                        s.since,
-                       h.customer,
-                       h.region,
+                       h.org_group,
+                       h.org,
+                       h.area,
                        h.location,
-                       h.in_service
+                       h.in_service,
+                       h.tag
                 FROM status s
                 INNER JOIN host h
                   ON h.id = s.host_id;
@@ -122,7 +124,10 @@ $$
         -- insert or update admission
         CREATE OR REPLACE FUNCTION pilotctl_set_admission(
             machine_id_param VARCHAR(100),
-            active_param BOOLEAN,
+            org_group_param VARCHAR(100),
+            org_param VARCHAR(100),
+            area_param VARCHAR(100),
+            location_param VARCHAR(100),
             tag_param TEXT[]
         )
             RETURNS VOID
@@ -132,12 +137,15 @@ $$
         AS
         $BODY$
         BEGIN
-            INSERT INTO admission (machine_id, active, tag)
-            VALUES (machine_id_param, active_param, tag_param)
+            INSERT INTO host (machine_id, org_group, org, area, location, tag)
+            VALUES (machine_id_param, org_group_param, org_param, area_param, location_param, tag_param)
             ON CONFLICT (machine_id)
                 DO UPDATE
-                SET active = active_param,
-                    tag    = tag_param;
+                SET org_group = org_group_param,
+                    org       = org_param,
+                    area      = area_param,
+                    location  = location_param,
+                    tag       = tag_param;
         END ;
         $BODY$;
 
@@ -156,36 +164,12 @@ $$
         BEGIN
             SELECT EXISTS INTO admitted (
                 SELECT 1
-                FROM admission
-                -- there is an entry for the machine id and is set to active
-                WHERE machine_id = machine_id_param AND active = TRUE
+                FROM host
+                -- there is an entry for the machine id
+                WHERE machine_id = machine_id_param
+                  AND in_service = true
             );
             RETURN admitted;
-        END ;
-        $BODY$;
-
-        -- get admissions by tag or all admissions if tag is null
-        CREATE OR REPLACE FUNCTION pilotctl_get_admissions(
-            tag_param TEXT[]
-        )
-            RETURNS TABLE
-            (
-                machine_id CHARACTER VARYING,
-                active   BOOLEAN,
-                tag      TEXT[]
-            )
-            LANGUAGE 'plpgsql'
-            COST 100
-            VOLATILE
-        AS
-        $BODY$
-        BEGIN
-            RETURN QUERY
-                SELECT a.machine_id,
-                       a.active,
-                       a.tag
-                FROM admission a
-                WHERE (a.tag @> tag_param OR tag_param IS NULL);
         END ;
         $BODY$;
 
