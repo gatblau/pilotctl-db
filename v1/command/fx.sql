@@ -139,7 +139,7 @@ $$
         BEGIN
             /* note: in_service is set to true after admission */
             INSERT INTO host (machine_id, org_group, org, area, location, tag, in_service)
-            VALUES (machine_id_param, org_group_param, org_param, area_param, location_param, tag_param, true)
+            VALUES (machine_id_param, org_group_param, org_param, area_param, location_param, tag_param, TRUE)
             ON CONFLICT (machine_id)
                 DO UPDATE
                 SET org_group  = org_group_param,
@@ -147,7 +147,7 @@ $$
                     area       = area_param,
                     location   = location_param,
                     tag        = tag_param,
-                    in_service = true;
+                    in_service = TRUE;
         END ;
         $BODY$;
 
