@@ -122,10 +122,10 @@ $$
                 FROM status s
                 INNER JOIN host h
                   ON h.id = s.host_id
-                WHERE h.area = COALESCE(area_param, h.area)
-                 AND h.location = COALESCE(location_param, h.location)
-                 AND h.org = COALESCE(org_param, h.org)
-                 AND h.org_group = COALESCE(org_group_param, h.org_group);
+                WHERE h.area = COALESCE(NULLIF(area_param, ''), h.area)
+                  AND h.location = COALESCE(NULLIF(location_param, ''), h.location)
+                  AND h.org = COALESCE(NULLIF(org_param, ''), h.org)
+                  AND h.org_group = COALESCE(NULLIF(org_group_param, ''), h.org_group);
         END ;
         $BODY$;
 
