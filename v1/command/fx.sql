@@ -85,17 +85,23 @@ $$
         $BODY$;
 
         -- return connection status
-        CREATE OR REPLACE FUNCTION pilotctl_get_conn_status(
+        CREATE OR REPLACE FUNCTION pilotctl_get_host(
+            org_group_param CHARACTER VARYING,
+            org_param CHARACTER VARYING,
+            area_param CHARACTER VARYING,
+            location_param CHARACTER VARYING
         )
             RETURNS TABLE
             (
-                host       CHARACTER VARYING,
+                machine_id CHARACTER VARYING,
                 connected  BOOLEAN,
                 since      TIMESTAMP(6) WITH TIME ZONE,
-                customer   CHARACTER VARYING,
-                region     CHARACTER VARYING,
+                org_group  CHARACTER VARYING,
+                org        CHARACTER VARYING,
+                area       CHARACTER VARYING,
                 location   CHARACTER VARYING,
-                in_service BOOLEAN
+                in_service BOOLEAN,
+                tag        TEXT[]
             )
             LANGUAGE 'plpgsql'
             COST 100
@@ -115,7 +121,11 @@ $$
                        h.tag
                 FROM status s
                 INNER JOIN host h
-                  ON h.id = s.host_id;
+                  ON h.id = s.host_id
+                WHERE h.area = COALESCE(area_param, h.area)
+                 AND h.location = COALESCE(location_param, h.location)
+                 AND h.org = COALESCE(org_param, h.org)
+                 AND h.org_group = COALESCE(org_group_param, h.org_group);
         END ;
         $BODY$;
 
