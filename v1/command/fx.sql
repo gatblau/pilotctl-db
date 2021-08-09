@@ -306,5 +306,58 @@ $$
         END
         $BODY$;
 
+        CREATE OR REPLACE FUNCTION pilotctl_get_jobs(
+            org_group_param CHARACTER VARYING,
+            org_param CHARACTER VARYING,
+            area_param CHARACTER VARYING,
+            location_param CHARACTER VARYING
+        )
+            RETURNS TABLE
+            (
+                id         CHARACTER VARYING,
+                machine_id CHARACTER VARYING,
+                fx_key     CHARACTER VARYING,
+                fx_version BIGINT,
+                created    TIMESTAMP(6) WITH TIME ZONE,
+                started    TIMESTAMP(6) WITH TIME ZONE,
+                completed  TIMESTAMP(6) WITH TIME ZONE,
+                log        TEXT,
+                error      BOOLEAN,
+                org_group  CHARACTER VARYING,
+                org        CHARACTER VARYING,
+                area       CHARACTER VARYING,
+                location   CHARACTER VARYING,
+                tag        TEXT[]
+            )
+            LANGUAGE 'plpgsql'
+            COST 100
+            VOLATILE
+        AS
+        $BODY$
+        BEGIN
+            RETURN QUERY
+                SELECT j.id,
+                       h.machine_id,
+                       j.fx_key,
+                       j.fx_version,
+                       j.created,
+                       j.started,
+                       j.completed,
+                       j.log,
+                       j.error,
+                       h.org_group,
+                       h.org,
+                       h.area,
+                       h.location,
+                       h.tag
+                FROM job j
+                   INNER JOIN host h ON h.id = j.host_id
+                WHERE h.area = COALESCE(NULLIF(area_param, ''), h.area)
+                  AND h.location = COALESCE(NULLIF(location_param, ''), h.location)
+                  AND h.org = COALESCE(NULLIF(org_param, ''), h.org)
+                  AND h.org_group = COALESCE(NULLIF(org_group_param, ''), h.org_group);
+        END ;
+        $BODY$;
+
     END;
 $$
