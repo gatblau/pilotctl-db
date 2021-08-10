@@ -308,6 +308,7 @@ $$
         END
         $BODY$;
 
+        -- get a list of jobs filtered by org-group, group, area and location
         CREATE OR REPLACE FUNCTION pilotctl_get_jobs(
             org_group_param CHARACTER VARYING,
             org_param CHARACTER VARYING,
@@ -316,7 +317,7 @@ $$
         )
             RETURNS TABLE
             (
-                id         CHARACTER VARYING,
+                id         BIGINT,
                 machine_id CHARACTER VARYING,
                 fx_key     CHARACTER VARYING,
                 fx_version BIGINT,
