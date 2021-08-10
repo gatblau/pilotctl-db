@@ -319,6 +319,7 @@ $$
             (
                 id         BIGINT,
                 machine_id CHARACTER VARYING,
+                job_ref    CHARACTER VARYING,
                 fx_key     CHARACTER VARYING,
                 fx_version BIGINT,
                 created    TIMESTAMP(6) WITH TIME ZONE,
@@ -341,6 +342,7 @@ $$
             RETURN QUERY
                 SELECT j.id,
                        h.machine_id,
+                       j.ref,
                        j.fx_key,
                        j.fx_version,
                        j.created,
