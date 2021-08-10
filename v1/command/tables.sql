@@ -93,6 +93,8 @@ $$
                 log        TEXT,
                 -- true if the job has failed
                 error      BOOLEAN,
+                -- a job reference to group all individual host executions under the same requester reference
+                ref        CHARACTER VARYING(150),
                 CONSTRAINT job_id_pk PRIMARY KEY (id),
                 CONSTRAINT job_host_id_fk FOREIGN KEY (host_id)
                     REFERENCES host (id) MATCH SIMPLE
