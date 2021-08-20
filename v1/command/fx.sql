@@ -20,11 +20,11 @@ $$
             machine_id_param CHARACTER VARYING(100)
         )
             RETURNS TABLE
-            (
-                job_id     BIGINT,
-                fx_key     CHARACTER VARYING(100),
-                fx_version BIGINT
-            )
+                    (
+                        job_id     BIGINT,
+                        fx_key     CHARACTER VARYING(100),
+                        fx_version BIGINT
+                    )
             LANGUAGE 'plpgsql'
             COST 100
             VOLATILE
@@ -40,7 +40,7 @@ $$
                 INSERT INTO host(machine_id, last_seen, in_service) VALUES (machine_id_param, now(), true);
             ELSE -- otherwise, update the last_seen timestamp
                 UPDATE host
-                SET last_seen = now(),
+                SET last_seen  = now(),
                     -- any beat revert in_service flag to true
                     in_service = true
                 WHERE machine_id = machine_id_param;
@@ -52,57 +52,28 @@ $$
         END;
         $BODY$;
 
-        -- record server side connected/disconnected events using information in host table
-        CREATE OR REPLACE FUNCTION pilotctl_record_conn_status(
-            after INTERVAL
-        )
-            RETURNS VOID
-            LANGUAGE 'plpgsql'
-            COST 100
-            VOLATILE
-        AS
-        $BODY$
-        BEGIN
-            -- insert any new hosts in the status table
-            INSERT INTO STATUS
-            SELECT h.id,
-                   CASE WHEN h.last_seen < now() - after THEN false ELSE true END,
-                   h.last_seen
-            FROM host h
-            LEFT JOIN status s ON s.host_id = h.id
-            WHERE s.host_id IS NULL;
-
-            -- update existing hosts in the status table
-            UPDATE status
-            SET host_id=h.id,
-                connected=CASE WHEN h.last_seen < now() - after THEN false ELSE true END,
-                since=h.last_seen
-            FROM host h
-            LEFT JOIN status s ON s.host_id = h.id
-            WHERE s.host_id IS NOT NULL
-              AND s.connected <> CASE WHEN h.last_seen < now() - after THEN false ELSE true END;
-        END ;
-        $BODY$;
-
-        -- return connection status
+        -- return host information including connection status
         CREATE OR REPLACE FUNCTION pilotctl_get_host(
+            -- the interval after last ping after which a host is considered disconnected
+            after INTERVAL,
+            -- query filters
             org_group_param CHARACTER VARYING,
             org_param CHARACTER VARYING,
             area_param CHARACTER VARYING,
             location_param CHARACTER VARYING
         )
             RETURNS TABLE
-            (
-                machine_id CHARACTER VARYING,
-                connected  BOOLEAN,
-                since      TIMESTAMP(6) WITH TIME ZONE,
-                org_group  CHARACTER VARYING,
-                org        CHARACTER VARYING,
-                area       CHARACTER VARYING,
-                location   CHARACTER VARYING,
-                in_service BOOLEAN,
-                tag        TEXT[]
-            )
+                    (
+                        machine_id CHARACTER VARYING,
+                        connected  BOOLEAN,
+                        since      TIMESTAMP(6) WITH TIME ZONE,
+                        org_group  CHARACTER VARYING,
+                        org        CHARACTER VARYING,
+                        area       CHARACTER VARYING,
+                        location   CHARACTER VARYING,
+                        in_service BOOLEAN,
+                        tag        TEXT[]
+                    )
             LANGUAGE 'plpgsql'
             COST 100
             VOLATILE
@@ -111,17 +82,16 @@ $$
         BEGIN
             RETURN QUERY
                 SELECT h.machine_id,
-                       s.connected,
-                       s.since,
+                       -- dynamically calculates connection status based on last_seen and passed-in interval
+                       coalesce(h.last_seen, date_trunc('month', now()) - interval '12 month') > now() - after as connected,
+                       h.last_seen,
                        h.org_group,
                        h.org,
                        h.area,
                        h.location,
                        h.in_service,
                        h.tag
-                FROM status s
-                RIGHT JOIN host h
-                  ON h.id = s.host_id
+                FROM host h
                 WHERE h.area = COALESCE(NULLIF(area_param, ''), h.area)
                   AND h.location = COALESCE(NULLIF(location_param, ''), h.location)
                   AND h.org = COALESCE(NULLIF(org_param, ''), h.org)
@@ -175,12 +145,11 @@ $$
             admitted BOOLEAN;
         BEGIN
             SELECT EXISTS INTO admitted (
-                SELECT 1
-                FROM host
-                -- there is an entry for the machine id
-                WHERE machine_id = machine_id_param
-                  AND in_service = true
-            );
+            SELECT 1
+            FROM host
+                 -- there is an entry for the machine id
+            WHERE machine_id = machine_id_param
+              AND in_service = true );
             RETURN admitted;
         END ;
         $BODY$;
@@ -201,12 +170,13 @@ $$
         AS
         $BODY$
         DECLARE
-            host_id_var    BIGINT;
+            host_id_var BIGINT;
         BEGIN
             -- capture the host surrogate key
             SELECT h.id FROM host h WHERE h.machine_id = machine_id_param INTO host_id_var;
             -- insert a job entry
-            INSERT INTO job (ref, host_id, fx_key, fx_version, created) VALUES (job_ref, host_id_var, fx_key_param, fx_version_param, now());
+            INSERT INTO job (ref, host_id, fx_key, fx_version, created)
+            VALUES (job_ref, host_id_var, fx_key_param, fx_version_param, now());
         END ;
         $BODY$;
 
@@ -243,11 +213,11 @@ $$
             machine_id_param VARCHAR(100)
         )
             RETURNS TABLE
-            (
-                job_id     BIGINT,
-                fx_key     CHARACTER VARYING(100),
-                fx_version BIGINT
-            )
+                    (
+                        job_id     BIGINT,
+                        fx_key     CHARACTER VARYING(100),
+                        fx_version BIGINT
+                    )
             LANGUAGE 'plpgsql'
             COST 100
             VOLATILE
@@ -271,7 +241,7 @@ $$
               AND pilotctl_scheduled_jobs(machine_id_param) = 0
               -- older job first
             ORDER BY j.created ASC
-            -- only interested in one job at a time
+                     -- only interested in one job at a time
             LIMIT 1;
 
             IF FOUND THEN
@@ -302,8 +272,8 @@ $$
         BEGIN
             UPDATE job
             SET completed = NOW(),
-                log = log_param,
-                error = error_param
+                log       = log_param,
+                error     = error_param
             WHERE id = job_id_param;
         END
         $BODY$;
@@ -316,23 +286,23 @@ $$
             location_param CHARACTER VARYING
         )
             RETURNS TABLE
-            (
-                id         BIGINT,
-                machine_id CHARACTER VARYING,
-                job_ref    CHARACTER VARYING,
-                fx_key     CHARACTER VARYING,
-                fx_version BIGINT,
-                created    TIMESTAMP(6) WITH TIME ZONE,
-                started    TIMESTAMP(6) WITH TIME ZONE,
-                completed  TIMESTAMP(6) WITH TIME ZONE,
-                log        TEXT,
-                error      BOOLEAN,
-                org_group  CHARACTER VARYING,
-                org        CHARACTER VARYING,
-                area       CHARACTER VARYING,
-                location   CHARACTER VARYING,
-                tag        TEXT[]
-            )
+                    (
+                        id         BIGINT,
+                        machine_id CHARACTER VARYING,
+                        job_ref    CHARACTER VARYING,
+                        fx_key     CHARACTER VARYING,
+                        fx_version BIGINT,
+                        created    TIMESTAMP(6) WITH TIME ZONE,
+                        started    TIMESTAMP(6) WITH TIME ZONE,
+                        completed  TIMESTAMP(6) WITH TIME ZONE,
+                        log        TEXT,
+                        error      BOOLEAN,
+                        org_group  CHARACTER VARYING,
+                        org        CHARACTER VARYING,
+                        area       CHARACTER VARYING,
+                        location   CHARACTER VARYING,
+                        tag        TEXT[]
+                    )
             LANGUAGE 'plpgsql'
             COST 100
             VOLATILE
@@ -356,7 +326,7 @@ $$
                        h.location,
                        h.tag
                 FROM job j
-                   INNER JOIN host h ON h.id = j.host_id
+                         INNER JOIN host h ON h.id = j.host_id
                 WHERE h.area = COALESCE(NULLIF(area_param, ''), h.area)
                   AND h.location = COALESCE(NULLIF(location_param, ''), h.location)
                   AND h.org = COALESCE(NULLIF(org_param, ''), h.org)
