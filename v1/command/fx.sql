@@ -120,7 +120,7 @@ $$
                        h.in_service,
                        h.tag
                 FROM status s
-                INNER JOIN host h
+                RIGHT JOIN host h
                   ON h.id = s.host_id
                 WHERE h.area = COALESCE(NULLIF(area_param, ''), h.area)
                   AND h.location = COALESCE(NULLIF(location_param, ''), h.location)
