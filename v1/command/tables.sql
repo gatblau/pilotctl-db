@@ -35,7 +35,7 @@ $$
                 -- the host surrogate key
                 id         BIGINT                 NOT NULL DEFAULT nextval('host_id_seq'::regclass),
                 -- the host machine id
-                machine_id CHARACTER VARYING(100) NOT NULL,
+                host_uuid  CHARACTER VARYING(100) NOT NULL,
                 -- the natural key for the organisation group using the host
                 org_group  CHARACTER VARYING(100),
                 -- the natural key for the organisation using the host
@@ -48,14 +48,64 @@ $$
                 last_seen  TIMESTAMP(6) WITH TIME ZONE,
                 -- is the host supposed to be working or is it powered off / in transit / stored away?
                 in_service BOOLEAN,
-                -- host tags
-                tag        TEXT[],
+                -- host labels
+                label      TEXT[],
                 CONSTRAINT host_id_pk PRIMARY KEY (id),
-                CONSTRAINT host_key_uc UNIQUE (machine_id)
+                CONSTRAINT host_key_uc UNIQUE (host_uuid)
             ) WITH (OIDS = FALSE)
               TABLESPACE pg_default;
 
+            -- Generalized Inverted Index.
+            -- GIN is designed for handling cases where the items to be indexed are composite values,
+            -- and the queries to be handled by the index need to search for element values that appear within the composite items
+            CREATE INDEX host_label_ix
+                ON host USING gin (label COLLATE pg_catalog."default")
+                TABLESPACE pg_default;
+
             ALTER TABLE "host"
+                OWNER to pilotctl;
+        END IF;
+
+        ---------------------------------------------------------------------------
+        -- JOB_BATCH (the definition for a job batch, a group of jobs executed on multiple hosts)
+        ---------------------------------------------------------------------------
+        IF NOT EXISTS(SELECT relname FROM pg_class WHERE relname = 'job_batch')
+        THEN
+            CREATE SEQUENCE job_batch_id_seq
+                INCREMENT 1
+                START 1000
+                MINVALUE 1000
+                MAXVALUE 9223372036854775807
+                CACHE 1;
+
+            ALTER SEQUENCE job_batch_id_seq
+                OWNER TO pilotctl;
+
+            CREATE TABLE "job_batch"
+            (
+                id          BIGINT NOT NULL             DEFAULT nextval('job_batch_id_seq'::regclass),
+                -- when the job reference was created
+                created     TIMESTAMP(6) WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP(6),
+                -- a name for the reference (not unique)
+                name        VARCHAR(150),
+                -- a description for the reference
+                description TEXT,
+                -- who created the job batch
+                owner       VARCHAR(150),
+                -- one or more search labels associated to the reference
+                label       TEXT[],
+                CONSTRAINT job_batch_id_pk PRIMARY KEY (id)
+            ) WITH (OIDS = FALSE)
+              TABLESPACE pg_default;
+
+            -- Generalized Inverted Index.
+            -- GIN is designed for handling cases where the items to be indexed are composite values,
+            -- and the queries to be handled by the index need to search for element values that appear within the composite items
+            CREATE INDEX job_batch_label_ix
+                ON job_batch USING gin (label COLLATE pg_catalog."default")
+                TABLESPACE pg_default;
+
+            ALTER TABLE "job_batch"
                 OWNER to pilotctl;
         END IF;
 
@@ -76,28 +126,32 @@ $$
 
             CREATE TABLE "job"
             (
-                id         BIGINT NOT NULL             DEFAULT nextval('job_id_seq'::regclass),
+                id           BIGINT NOT NULL             DEFAULT nextval('job_id_seq'::regclass),
                 -- the surrogate key of the host where the job should be executed
-                host_id    BIGINT NOT NULL,
+                host_id      BIGINT NOT NULL,
                 -- the natural key of the configuration item for the artisan function to execute
-                fx_key     CHARACTER VARYING(150),
+                fx_key       CHARACTER VARYING(150),
                 -- version of the fx config item in Onix used for the job
-                fx_version BIGINT NOT NULL,
+                fx_version   BIGINT NOT NULL,
                 -- the client has requested the job to be executed
-                created    TIMESTAMP(6) WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP(6),
+                created      TIMESTAMP(6) WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP(6),
                 -- the service has delivered the job to the relevant remote pilot
-                started    TIMESTAMP(6) WITH TIME ZONE,
+                started      TIMESTAMP(6) WITH TIME ZONE,
                 -- the service has received the completion information from the relevant remote pilot
-                completed  TIMESTAMP(6) WITH TIME ZONE,
+                completed    TIMESTAMP(6) WITH TIME ZONE,
                 -- the remote execution log
-                log        TEXT,
+                log          TEXT,
                 -- true if the job has failed
-                error      BOOLEAN,
-                -- a job reference to group all individual host executions under the same requester reference
-                ref        CHARACTER VARYING(150),
+                error        BOOLEAN,
+                -- the foreign key to the job batch
+                job_batch_id BIGINT NOT NULL,
                 CONSTRAINT job_id_pk PRIMARY KEY (id),
                 CONSTRAINT job_host_id_fk FOREIGN KEY (host_id)
                     REFERENCES host (id) MATCH SIMPLE
+                    ON UPDATE NO ACTION
+                    ON DELETE CASCADE,
+                CONSTRAINT job_batch_id_fk FOREIGN KEY (job_batch_id)
+                    REFERENCES job_batch (id) MATCH SIMPLE
                     ON UPDATE NO ACTION
                     ON DELETE CASCADE
             ) WITH (OIDS = FALSE)
