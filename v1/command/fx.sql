@@ -60,7 +60,8 @@ $$
             org_group_param CHARACTER VARYING,
             org_param CHARACTER VARYING,
             area_param CHARACTER VARYING,
-            location_param CHARACTER VARYING
+            location_param CHARACTER VARYING,
+            label_param TEXT[]
         )
             RETURNS TABLE
                     (
@@ -95,7 +96,10 @@ $$
                 WHERE h.area = COALESCE(NULLIF(area_param, ''), h.area)
                   AND h.location = COALESCE(NULLIF(location_param, ''), h.location)
                   AND h.org = COALESCE(NULLIF(org_param, ''), h.org)
-                  AND h.org_group = COALESCE(NULLIF(org_group_param, ''), h.org_group);
+                  AND h.org_group = COALESCE(NULLIF(org_group_param, ''), h.org_group)
+                  AND
+                  -- filters by labels
+                    (h.label @> label_param OR label_param IS NULL);
         END ;
         $BODY$;
 
