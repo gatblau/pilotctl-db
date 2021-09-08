@@ -65,15 +65,15 @@ $$
         )
             RETURNS TABLE
                     (
-                        machine_id CHARACTER VARYING,
+                        host_uuid  CHARACTER VARYING,
                         connected  BOOLEAN,
-                        since      TIMESTAMP(6) WITH TIME ZONE,
+                        last_seen  TIMESTAMP(6) WITH TIME ZONE,
                         org_group  CHARACTER VARYING,
                         org        CHARACTER VARYING,
                         area       CHARACTER VARYING,
                         location   CHARACTER VARYING,
                         in_service BOOLEAN,
-                        tag        TEXT[]
+                        label        TEXT[]
                     )
             LANGUAGE 'plpgsql'
             COST 100
