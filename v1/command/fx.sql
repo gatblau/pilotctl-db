@@ -163,7 +163,7 @@ $$
         -- create a new job for executing a command on a host
         CREATE OR REPLACE FUNCTION pilotctl_create_job_batch(
             name_param CHARACTER VARYING,
-            desc_param CHARACTER VARYING,
+            notes_param CHARACTER VARYING,
             owner_param CHARACTER VARYING,
             label_param TEXT[]
         )
@@ -174,7 +174,7 @@ $$
         AS
         $BODY$
         BEGIN
-            INSERT INTO job_batch (name, description, owner, label) VALUES (name_param, desc_param, owner_param, label_param);
+            INSERT INTO job_batch (name, notes, owner, label) VALUES (name_param, notes_param, owner_param, label_param);
             RETURN QUERY select currval('job_batch_id_seq');
         END ;
         $BODY$;
