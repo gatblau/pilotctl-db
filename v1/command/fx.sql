@@ -315,14 +315,14 @@ $$
             owner_param CHARACTER VARYING
         )
         RETURNS TABLE (
-                job_batch_id BIGINT,
-                name CHARACTER VARYING,
-                description TEXT,
-                label TEXT[],
-                created TIMESTAMP WITH TIME ZONE,
-                owner CHARACTER VARYING,
-                jobs BIGINT
-            )
+              job_batch_id BIGINT,
+              name         CHARACTER VARYING,
+              notes        TEXT,
+              label        TEXT[],
+              created      TIMESTAMP WITH TIME ZONE,
+              owner        CHARACTER VARYING,
+              jobs         BIGINT
+        )
             LANGUAGE 'plpgsql'
             COST 100
             VOLATILE
@@ -332,7 +332,7 @@ $$
             RETURN QUERY
                 SELECT jb.id,
                        jb.name,
-                       jb.description,
+                       jb.notes,
                        jb.label,
                        jb.created,
                        jb.owner,
@@ -342,18 +342,18 @@ $$
                                     ON jb.id = j.job_batch_id
                 WHERE
                   -- filters by job name
-                    jb.name LIKE (COALESCE(NULLIF(name_param, ''), jb.name) || '%')
+                    jb.name LIKE ('%' || COALESCE(NULLIF(name_param, ''), jb.name) || '%')
                   AND
                   -- filters by owner
-                    jb.owner = COALESCE(NULLIF(owner_param, ''), jb.owner)
+                    jb.owner LIKE ('%' || COALESCE(NULLIF(owner_param, ''), jb.owner) || '%')
                   AND
                   -- filters by labels
                     (jb.label @> label_param OR label_param IS NULL)
                   AND
                   -- filters by date range
-                    ((COALESCE(from_param, now()) <= jb.created AND COALESCE(to_param, now()) > jb.created) OR
+                    ((COALESCE(from_param, jb.created) <= jb.created AND COALESCE(to_param, jb.created) >= jb.created) OR
                      (from_param IS NULL AND to_param IS NULL))
-                GROUP BY (jb.id, jb.name, jb.description, jb.label, jb.created, jb.owner);
+                GROUP BY (jb.id, jb.name, jb.notes, jb.label, jb.created, jb.owner);
         END ;
         $BODY$;
 

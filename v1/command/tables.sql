@@ -88,8 +88,8 @@ $$
                 created     TIMESTAMP(6) WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP(6),
                 -- a name for the reference (not unique)
                 name        VARCHAR(150),
-                -- a description for the reference
-                description TEXT,
+                -- any non-mandatory notes associated with the batch
+                notes TEXT,
                 -- who created the job batch
                 owner       VARCHAR(150),
                 -- one or more search labels associated to the reference
