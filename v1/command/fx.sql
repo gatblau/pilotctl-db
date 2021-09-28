@@ -415,5 +415,34 @@ $$
         END ;
         $BODY$;
 
+        -- get host information by uuid
+        CREATE OR REPLACE FUNCTION pilotctl_get_host(
+            host_uuid_param CHARACTER VARYING
+        )
+            RETURNS TABLE
+                    (
+                        org_group    CHARACTER VARYING,
+                        org          CHARACTER VARYING,
+                        area         CHARACTER VARYING,
+                        location     CHARACTER VARYING,
+                        label        TEXT[]
+                    )
+            LANGUAGE 'plpgsql'
+            COST 100
+            VOLATILE
+        AS
+        $BODY$
+        BEGIN
+            RETURN QUERY
+                SELECT h.org_group,
+                       h.org,
+                       h.area,
+                       h.location,
+                       h.label
+                FROM host h
+                WHERE h.host_uuid = host_uuid_param;
+        END ;
+        $BODY$;
+
     END;
 $$
