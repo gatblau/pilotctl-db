@@ -398,7 +398,8 @@ $$
                        j.created,
                        j.started,
                        j.completed,
-                       j.log,
+                       -- limit the log result in case it is too long to prevent retrieval performance
+                       RIGHT(j.log, 5000) as log,
                        j.error,
                        h.org_group,
                        h.org,
@@ -406,7 +407,7 @@ $$
                        h.location,
                        h.label
                 FROM job j
-                         INNER JOIN host h ON h.id = j.host_id
+                    INNER JOIN host h ON h.id = j.host_id
                 WHERE h.area = COALESCE(NULLIF(area_param, ''), h.area)
                   AND h.location = COALESCE(NULLIF(location_param, ''), h.location)
                   AND h.org = COALESCE(NULLIF(org_param, ''), h.org)
