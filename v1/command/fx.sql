@@ -73,7 +73,7 @@ $$
                         area       CHARACTER VARYING,
                         location   CHARACTER VARYING,
                         in_service BOOLEAN,
-                        label        TEXT[]
+                        label      TEXT[]
                     )
             LANGUAGE 'plpgsql'
             COST 100
@@ -158,6 +158,63 @@ $$
         END ;
         $BODY$;
 
+        -- insert or update registration
+        CREATE OR REPLACE FUNCTION pilotctl_set_registration(
+            mac_address_param VARCHAR(100),
+            org_group_param VARCHAR(100),
+            org_param VARCHAR(100),
+            area_param VARCHAR(100),
+            location_param VARCHAR(100),
+            label_param TEXT[]
+        )
+            RETURNS VOID
+            LANGUAGE 'plpgsql'
+            COST 100
+            VOLATILE
+        AS
+        $BODY$
+        BEGIN
+            /* note: in_service is set to false after registration */
+            INSERT INTO host (mac_address, org_group, org, area, location, label, in_service)
+            VALUES (mac_address_param, org_group_param, org_param, area_param, location_param, label_param, FALSE)
+            ON CONFLICT (mac_address)
+                DO UPDATE
+                SET org_group    = org_group_param,
+                    org          = org_param,
+                    area         = area_param,
+                    location     = location_param,
+                    label        = label_param,
+                    in_service   = TRUE;
+        END ;
+        $BODY$;
+
+        -- insert or update registration
+        CREATE OR REPLACE FUNCTION pilotctl_set_host_uuid(
+            mac_address_param VARCHAR(100),
+            host_uuid_param VARCHAR(100)
+        )
+            RETURNS VOID
+            LANGUAGE 'plpgsql'
+            COST 100
+            VOLATILE
+        AS
+        $BODY$
+        DECLARE
+            count INT;
+        BEGIN
+            /* note: in_service is set to true after a host uuid is known as it means the host has been activated */
+            UPDATE host
+                SET host_uuid = host_uuid_param,
+                    in_service = TRUE
+                WHERE mac_address = mac_address_param;
+
+            GET DIAGNOSTICS count = ROW_COUNT;
+            IF count <> 1 THEN
+                -- return an error
+                RAISE EXCEPTION 'Host with MAC-ADDRESS % is not recognised, has it be registered?', mac_address_param;
+            END IF;
+        END ;
+        $BODY$;
         -- JOBS
 
         -- create a new job for executing a command on a host
@@ -167,14 +224,18 @@ $$
             owner_param CHARACTER VARYING,
             label_param TEXT[]
         )
-            RETURNS TABLE ( job_batch_Id BIGINT )
+            RETURNS TABLE
+                    (
+                        job_batch_Id BIGINT
+                    )
             LANGUAGE 'plpgsql'
             COST 100
             VOLATILE
         AS
         $BODY$
         BEGIN
-            INSERT INTO job_batch (name, notes, owner, label) VALUES (name_param, notes_param, owner_param, label_param);
+            INSERT INTO job_batch (name, notes, owner, label)
+            VALUES (name_param, notes_param, owner_param, label_param);
             RETURN QUERY select currval('job_batch_id_seq');
         END ;
         $BODY$;
@@ -314,15 +375,16 @@ $$
             label_param TEXT[],
             owner_param CHARACTER VARYING
         )
-        RETURNS TABLE (
-              job_batch_id BIGINT,
-              name         CHARACTER VARYING,
-              notes        TEXT,
-              label        TEXT[],
-              created      TIMESTAMP WITH TIME ZONE,
-              owner        CHARACTER VARYING,
-              jobs         BIGINT
-        )
+            RETURNS TABLE
+                    (
+                        job_batch_id BIGINT,
+                        name         CHARACTER VARYING,
+                        notes        TEXT,
+                        label        TEXT[],
+                        created      TIMESTAMP WITH TIME ZONE,
+                        owner        CHARACTER VARYING,
+                        jobs         BIGINT
+                    )
             LANGUAGE 'plpgsql'
             COST 100
             VOLATILE
@@ -342,16 +404,17 @@ $$
                                     ON jb.id = j.job_batch_id
                 WHERE
                   -- filters by job name
-                    jb.name LIKE ('%' || COALESCE(NULLIF(name_param, ''), jb.name) || '%')
+                        jb.name LIKE ('%' || COALESCE(NULLIF(name_param, ''), jb.name) || '%')
                   AND
                   -- filters by owner
-                    jb.owner LIKE ('%' || COALESCE(NULLIF(owner_param, ''), jb.owner) || '%')
+                        jb.owner LIKE ('%' || COALESCE(NULLIF(owner_param, ''), jb.owner) || '%')
                   AND
                   -- filters by labels
                     (jb.label @> label_param OR label_param IS NULL)
                   AND
                   -- filters by date range
-                    ((COALESCE(from_param, jb.created) <= jb.created AND COALESCE(to_param, jb.created) >= jb.created) OR
+                    ((COALESCE(from_param, jb.created) <= jb.created AND
+                      COALESCE(to_param, jb.created) >= jb.created) OR
                      (from_param IS NULL AND to_param IS NULL))
                 GROUP BY (jb.id, jb.name, jb.notes, jb.label, jb.created, jb.owner);
         END ;
@@ -407,7 +470,7 @@ $$
                        h.location,
                        h.label
                 FROM job j
-                    INNER JOIN host h ON h.id = j.host_id
+                         INNER JOIN host h ON h.id = j.host_id
                 WHERE h.area = COALESCE(NULLIF(area_param, ''), h.area)
                   AND h.location = COALESCE(NULLIF(location_param, ''), h.location)
                   AND h.org = COALESCE(NULLIF(org_param, ''), h.org)
@@ -422,11 +485,11 @@ $$
         )
             RETURNS TABLE
                     (
-                        org_group    CHARACTER VARYING,
-                        org          CHARACTER VARYING,
-                        area         CHARACTER VARYING,
-                        location     CHARACTER VARYING,
-                        label        TEXT[]
+                        org_group CHARACTER VARYING,
+                        org       CHARACTER VARYING,
+                        area      CHARACTER VARYING,
+                        location  CHARACTER VARYING,
+                        label     TEXT[]
                     )
             LANGUAGE 'plpgsql'
             COST 100

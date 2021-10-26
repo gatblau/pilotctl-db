@@ -33,23 +33,31 @@ $$
             CREATE TABLE "host"
             (
                 -- the host surrogate key
-                id         BIGINT                 NOT NULL DEFAULT nextval('host_id_seq'::regclass),
-                -- the host machine id
-                host_uuid  CHARACTER VARYING(100) NOT NULL,
+                id           BIGINT                 NOT NULL DEFAULT nextval('host_id_seq'::regclass),
+                -- the host unique identifier
+                host_uuid    CHARACTER VARYING(100),
+                -- the mac address of the host primary interface
+                mac_address  CHARACTER VARYING(100),
                 -- the natural key for the organisation group using the host
-                org_group  CHARACTER VARYING(100),
+                org_group    CHARACTER VARYING(100),
                 -- the natural key for the organisation using the host
-                org        CHARACTER VARYING(100),
+                org          CHARACTER VARYING(100),
                 -- the natural key for the region under which the host is deployed
-                area       CHARACTER VARYING(100),
+                area         CHARACTER VARYING(100),
                 -- the natural key for the physical location under which the host is deployed
-                location   CHARACTER VARYING(100),
+                location     CHARACTER VARYING(100),
                 -- when was the pilot last beat?
-                last_seen  TIMESTAMP(6) WITH TIME ZONE,
+                last_seen    TIMESTAMP(6) WITH TIME ZONE,
                 -- is the host supposed to be working or is it powered off / in transit / stored away?
-                in_service BOOLEAN,
+                in_service   BOOLEAN,
                 -- host labels
-                label      TEXT[],
+                label        TEXT[],
+                -- the host local ip address
+                ip           CHARACTER VARYING(100),
+                -- the hostname
+                hostname     CHARACTER VARYING(100),
+                -- link tag used to group hosts together
+                link         CHARACTER VARYING(16),
                 CONSTRAINT host_id_pk PRIMARY KEY (id),
                 CONSTRAINT host_key_uc UNIQUE (host_uuid)
             ) WITH (OIDS = FALSE)
@@ -83,17 +91,17 @@ $$
 
             CREATE TABLE "job_batch"
             (
-                id          BIGINT NOT NULL             DEFAULT nextval('job_batch_id_seq'::regclass),
+                id      BIGINT NOT NULL             DEFAULT nextval('job_batch_id_seq'::regclass),
                 -- when the job reference was created
-                created     TIMESTAMP(6) WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP(6),
+                created TIMESTAMP(6) WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP(6),
                 -- a name for the reference (not unique)
-                name        VARCHAR(150),
+                name    VARCHAR(150),
                 -- any non-mandatory notes associated with the batch
-                notes TEXT,
+                notes   TEXT,
                 -- who created the job batch
-                owner       VARCHAR(150),
+                owner   VARCHAR(150),
                 -- one or more search labels associated to the reference
-                label       TEXT[],
+                label   TEXT[],
                 CONSTRAINT job_batch_id_pk PRIMARY KEY (id)
             ) WITH (OIDS = FALSE)
               TABLESPACE pg_default;
