@@ -188,8 +188,8 @@ $$
         END ;
         $BODY$;
 
-        -- insert or update registration
-        CREATE OR REPLACE FUNCTION pilotctl_set_host_uuid(
+        -- admits a host that has been previously registered
+        CREATE OR REPLACE FUNCTION pilotctl_admit_registered(
             mac_address_param VARCHAR(100),
             host_uuid_param VARCHAR(100)
         )
