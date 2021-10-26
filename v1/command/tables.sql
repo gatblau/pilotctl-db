@@ -59,7 +59,8 @@ $$
                 -- link tag used to group hosts together
                 link         CHARACTER VARYING(16),
                 CONSTRAINT host_id_pk PRIMARY KEY (id),
-                CONSTRAINT host_key_uc UNIQUE (host_uuid)
+                CONSTRAINT host_key_uc UNIQUE (host_uuid),
+                CONSTRAINT host_key_uc UNIQUE (mac_address)
             ) WITH (OIDS = FALSE)
               TABLESPACE pg_default;
 
