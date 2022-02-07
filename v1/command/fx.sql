@@ -82,9 +82,12 @@ $$
         $BODY$
         BEGIN
             RETURN QUERY
-                SELECT h.host_uuid,
+                SELECT
+                       -- if host UUID is null, the host has been registered with a MAC but it is waiting discovery
+                       -- and allocation of UUID, then return empty string
+                       COALESCE(h.host_uuid, ''),
                        -- dynamically calculates connection status based on last_seen and passed-in interval
-                       coalesce(h.last_seen, date_trunc('month', now()) - interval '12 month') > now() - after as connected,
+                       COALESCE(h.last_seen, date_trunc('month', now()) - interval '12 month') > now() - after as connected,
                        h.last_seen,
                        h.org_group,
                        h.org,
