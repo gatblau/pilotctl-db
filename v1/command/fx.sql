@@ -161,6 +161,33 @@ $$
         END ;
         $BODY$;
 
+        -- remove registration
+        CREATE OR REPLACE FUNCTION pilotctl_unset_registration(
+            mac_address_param VARCHAR(100)
+        )
+            RETURNS VOID
+            LANGUAGE 'plpgsql'
+            COST 100
+            VOLATILE
+        AS
+        $BODY$
+        DECLARE
+            count INT;
+        BEGIN
+            -- only deletes the host entry if the host has not been admitted (i.e. host_uuid IS NULL)
+            DELETE FROM host
+            WHERE mac_address = mac_address_param
+            AND host_uuid IS NULL;
+
+            -- find out if the record was deleted
+            GET DIAGNOSTICS count = ROW_COUNT;
+            IF count <> 1 THEN
+                -- return an error
+                RAISE EXCEPTION 'Host with MAC-ADDRESS % could not be unregistered, either does not exist or has already been admitted', mac_address_param;
+            END IF;
+        END;
+        $BODY$;
+
         -- insert or update registration
         CREATE OR REPLACE FUNCTION pilotctl_set_registration(
             mac_address_param VARCHAR(100),
