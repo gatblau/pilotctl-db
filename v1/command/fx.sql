@@ -65,15 +65,16 @@ $$
         )
             RETURNS TABLE
                     (
-                        host_uuid  CHARACTER VARYING,
-                        connected  BOOLEAN,
-                        last_seen  TIMESTAMP(6) WITH TIME ZONE,
-                        org_group  CHARACTER VARYING,
-                        org        CHARACTER VARYING,
-                        area       CHARACTER VARYING,
-                        location   CHARACTER VARYING,
-                        in_service BOOLEAN,
-                        label      TEXT[]
+                        host_uuid   CHARACTER VARYING,
+                        mac_address CHARACTER VARYING,
+                        connected   BOOLEAN,
+                        last_seen   TIMESTAMP(6) WITH TIME ZONE,
+                        org_group   CHARACTER VARYING,
+                        org         CHARACTER VARYING,
+                        area        CHARACTER VARYING,
+                        location    CHARACTER VARYING,
+                        in_service  BOOLEAN,
+                        label       TEXT[]
                     )
             LANGUAGE 'plpgsql'
             COST 100
@@ -86,6 +87,8 @@ $$
                        -- if host UUID is null, the host has been registered with a MAC but it is waiting discovery
                        -- and allocation of UUID, then return empty string
                        COALESCE(h.host_uuid, ''),
+                       -- the mac address of the host primary interface used for registration
+                       COALESCE(h.mac_address, ''),
                        -- dynamically calculates connection status based on last_seen and passed-in interval
                        COALESCE(h.last_seen, date_trunc('month', now()) - interval '12 month') > now() - after as connected,
                        h.last_seen,
