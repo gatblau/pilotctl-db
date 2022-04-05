@@ -1,5 +1,5 @@
 /*
-    Onix Pilot Control Service - Copyright (c) 2018-2021 by www.gatblau.org
+    Onix Pilot Control Service - Copyright (c) 2018-Present by www.gatblau.org
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
@@ -58,6 +58,8 @@ $$
                 hostname     CHARACTER VARYING(100),
                 -- link tag used to group hosts together
                 link         CHARACTER VARYING(16),
+                -- the date the host was decommissioned, null if the host is active
+                decom_date   TIMESTAMP(6) WITH TIME ZONE,
                 CONSTRAINT host_id_pk PRIMARY KEY (id),
                 CONSTRAINT host_key_uc UNIQUE (host_uuid),
                 CONSTRAINT mac_address_uc UNIQUE (mac_address)

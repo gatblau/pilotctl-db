@@ -99,7 +99,8 @@ $$
                        h.in_service,
                        h.label
                 FROM host h
-                WHERE h.area = COALESCE(NULLIF(area_param, ''), h.area)
+                WHERE h.decom_date IS NULL -- not decommissioned
+                  AND h.area = COALESCE(NULLIF(area_param, ''), h.area)
                   AND h.location = COALESCE(NULLIF(location_param, ''), h.location)
                   AND h.org = COALESCE(NULLIF(org_param, ''), h.org)
                   AND h.org_group = COALESCE(NULLIF(org_group_param, ''), h.org_group)
@@ -107,6 +108,35 @@ $$
                   -- filters by labels
                     (h.label @> label_param OR label_param IS NULL);
         END ;
+        $BODY$;
+
+        -- decommissions the host
+        CREATE OR REPLACE FUNCTION pilotctl_decom_host(
+            host_uuid_param VARCHAR(100)
+        )
+            RETURNS VOID
+            LANGUAGE 'plpgsql'
+            COST 100
+            VOLATILE
+        AS
+        $BODY$
+        DECLARE
+            count INTEGER;
+        BEGIN
+            UPDATE host
+            -- qualifies the mac_address with host_uuid to avoid clashes of non-decommissioned hosts on mac_address
+            SET mac_address = mac_address || host.host_uuid,
+                in_service = FALSE,
+                decom_date = now()
+            WHERE host_uuid = host_uuid_param;
+
+            -- finds out if the host record was updated
+            GET DIAGNOSTICS count = ROW_COUNT;
+            IF count <> 1 THEN
+                -- return an error
+                RAISE EXCEPTION 'host with ID % could not be decommissioned', host_uuid_param;
+            END IF;
+        END;
         $BODY$;
 
         -- ADMISSIONS
