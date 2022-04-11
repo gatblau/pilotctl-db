@@ -110,6 +110,40 @@ $$
         END ;
         $BODY$;
 
+        -- return a list of hosts in service at one or more specified locations
+        CREATE OR REPLACE FUNCTION pilotctl_get_host_at_location(
+            location_param CHARACTER VARYING[]
+        )
+            RETURNS TABLE
+                    (
+                        host_uuid   CHARACTER VARYING,
+                        mac_address CHARACTER VARYING,
+                        org_group   CHARACTER VARYING,
+                        org         CHARACTER VARYING,
+                        area        CHARACTER VARYING,
+                        location    CHARACTER VARYING
+                    )
+            LANGUAGE 'plpgsql'
+            COST 100
+            VOLATILE
+        AS
+        $BODY$
+        BEGIN
+            RETURN QUERY
+                SELECT
+                    h.host_uuid,
+                    h.mac_address,
+                    h.org_group,
+                    h.org,
+                    h.area,
+                    h.location
+                FROM host h
+                WHERE h.in_service
+                  AND h.host_uuid IS NOT NULL
+                  AND h.location = ANY(location_param);
+        END;
+        $BODY$;
+
         -- decommissions the host
         CREATE OR REPLACE FUNCTION pilotctl_decom_host(
             host_uuid_param VARCHAR(100)
