@@ -53,7 +53,7 @@ $$
         $BODY$;
 
         -- return host information including connection status
-        CREATE OR REPLACE FUNCTION pilotctl_get_host(
+        CREATE OR REPLACE FUNCTION pilotctl_get_hosts(
             -- the interval after last ping after which a host is considered disconnected
             after INTERVAL,
             -- query filters
@@ -107,6 +107,35 @@ $$
                   AND
                   -- filters by labels
                     (h.label @> label_param OR label_param IS NULL);
+        END ;
+        $BODY$;
+
+        -- get host information by uuid
+        CREATE OR REPLACE FUNCTION pilotctl_get_host(
+            host_uuid_param CHARACTER VARYING
+        )
+            RETURNS TABLE
+                    (
+                        org_group CHARACTER VARYING,
+                        org       CHARACTER VARYING,
+                        area      CHARACTER VARYING,
+                        location  CHARACTER VARYING,
+                        label     TEXT[]
+                    )
+            LANGUAGE 'plpgsql'
+            COST 100
+            VOLATILE
+        AS
+        $BODY$
+        BEGIN
+            RETURN QUERY
+                SELECT h.org_group,
+                       h.org,
+                       h.area,
+                       h.location,
+                       h.label
+                FROM host h
+                WHERE h.host_uuid = host_uuid_param;
         END ;
         $BODY$;
 
@@ -573,35 +602,6 @@ $$
                   AND h.org = COALESCE(NULLIF(org_param, ''), h.org)
                   AND h.org_group = COALESCE(NULLIF(org_group_param, ''), h.org_group)
                   AND j.job_batch_id = COALESCE(batch_id_param, j.job_batch_id);
-        END ;
-        $BODY$;
-
-        -- get host information by uuid
-        CREATE OR REPLACE FUNCTION pilotctl_get_host(
-            host_uuid_param CHARACTER VARYING
-        )
-            RETURNS TABLE
-                    (
-                        org_group CHARACTER VARYING,
-                        org       CHARACTER VARYING,
-                        area      CHARACTER VARYING,
-                        location  CHARACTER VARYING,
-                        label     TEXT[]
-                    )
-            LANGUAGE 'plpgsql'
-            COST 100
-            VOLATILE
-        AS
-        $BODY$
-        BEGIN
-            RETURN QUERY
-                SELECT h.org_group,
-                       h.org,
-                       h.area,
-                       h.location,
-                       h.label
-                FROM host h
-                WHERE h.host_uuid = host_uuid_param;
         END ;
         $BODY$;
 
