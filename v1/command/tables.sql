@@ -61,7 +61,8 @@ $$
                 -- the date the host was decommissioned, null if the host is active
                 decom_date   TIMESTAMP(6) WITH TIME ZONE,
                 CONSTRAINT host_id_pk PRIMARY KEY (id),
-                CONSTRAINT host_key_uc UNIQUE (host_uuid)
+                CONSTRAINT host_key_uc UNIQUE (host_uuid),
+                CONSTRAINT mac_address_uc UNIQUE (mac_address)
             ) WITH (OIDS = FALSE)
               TABLESPACE pg_default;
 
