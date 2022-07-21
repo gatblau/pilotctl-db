@@ -60,6 +60,10 @@ $$
                 link         CHARACTER VARYING(16),
                 -- the date the host was decommissioned, null if the host is active
                 decom_date   TIMESTAMP(6) WITH TIME ZONE,
+                cve_critical INTEGER,
+                cve_high     INTEGER,
+                cve_medium   INTEGER,
+                cve_low      INTEGER,
                 CONSTRAINT host_id_pk PRIMARY KEY (id),
                 CONSTRAINT host_key_uc UNIQUE (host_uuid),
                 CONSTRAINT mac_address_uc UNIQUE (mac_address)
@@ -169,6 +173,72 @@ $$
               TABLESPACE pg_default;
 
             ALTER TABLE "job"
+                OWNER to pilotctl;
+        END IF;
+
+
+        ---------------------------------------------------------------------------
+        -- CVE (stores Common Vulnerability & Exploits (CVE) definitions)
+        ---------------------------------------------------------------------------
+        IF NOT EXISTS(SELECT relname FROM pg_class WHERE relname = 'cve')
+        THEN
+            CREATE TABLE "cve"
+            (
+                id                CHARACTER VARYING(30) NOT NULL,
+                summary           TEXT,
+                fixed             BOOLEAN,
+                cvss_score        NUMERIC(2,1),
+                cvss_type         CHARACTER VARYING(20),
+                cvss_severity     CHARACTER VARYING(20),
+                cvss_vector       CHARACTER VARYING(20),
+                primary_source    TEXT[],
+                mitigations       TEXT[],
+                patch_urls        TEXT[],
+                confidence        TEXT[],
+                cpe               TEXT[],
+                reference         JSONB,
+                CONSTRAINT cve_id_pk PRIMARY KEY (id)
+            ) WITH (OIDS = FALSE)
+            TABLESPACE pg_default;
+
+            ALTER TABLE "cve"
+                OWNER to pilotctl;
+        END IF;
+
+        ---------------------------------------------------------------------------
+        -- CVE_HOST (stores links between CVEs and Hosts)
+        ---------------------------------------------------------------------------
+        IF NOT EXISTS(SELECT relname FROM pg_class WHERE relname = 'cve_host')
+        THEN
+            CREATE TABLE "cve_host"
+            (
+                cve_id            CHARACTER VARYING(30) NOT NULL,
+                host_uuid         CHARACTER VARYING(100) NOT NULL,
+                scan_date         TIMESTAMP(6) WITH TIME ZONE,
+                CONSTRAINT cve_host_pk PRIMARY KEY (cve_id, host_uuid)
+            ) WITH (OIDS = FALSE)
+              TABLESPACE pg_default;
+
+            ALTER TABLE "cve_host"
+                OWNER to pilotctl;
+        END IF;
+
+        ---------------------------------------------------------------------------
+        -- CVE_PAC (stores affected CVE packages)
+        ---------------------------------------------------------------------------
+        IF NOT EXISTS(SELECT relname FROM pg_class WHERE relname = 'cve_pac')
+        THEN
+            CREATE TABLE "cve_pac"
+            (
+                cve_id            CHARACTER VARYING(30) NOT NULL,
+                package_name      CHARACTER VARYING(100) NOT NULL,
+                fixed             BOOLEAN,
+                fixed_in          CHARACTER VARYING(100),
+                CONSTRAINT cve_pac_pk PRIMARY KEY (cve_id, package_name)
+            ) WITH (OIDS = FALSE)
+              TABLESPACE pg_default;
+
+            ALTER TABLE "cve_pac"
                 OWNER to pilotctl;
         END IF;
     END;

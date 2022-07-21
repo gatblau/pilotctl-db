@@ -115,13 +115,17 @@ $$
             host_uuid_param CHARACTER VARYING
         )
             RETURNS TABLE
-                    (
-                        org_group CHARACTER VARYING,
-                        org       CHARACTER VARYING,
-                        area      CHARACTER VARYING,
-                        location  CHARACTER VARYING,
-                        label     TEXT[]
-                    )
+            (
+                org_group CHARACTER VARYING,
+                org       CHARACTER VARYING,
+                area      CHARACTER VARYING,
+                location  CHARACTER VARYING,
+                label     TEXT[],
+                cve_critical INTEGER,
+                cve_high  INTEGER,
+                cve_medium INTEGER,
+                cve_low   INTEGER
+            )
             LANGUAGE 'plpgsql'
             COST 100
             VOLATILE
@@ -605,5 +609,210 @@ $$
         END ;
         $BODY$;
 
-    END;
+        -- insert or update CVE
+        CREATE OR REPLACE FUNCTION pilotctl_set_cve(
+            id_param                CHARACTER VARYING(30),
+            summary_param           TEXT,
+            fixed_param             BOOLEAN,
+            cvss_score_param        NUMERIC(2,1),
+            cvss_type_param         CHARACTER VARYING(20),
+            cvss_severity_param     CHARACTER VARYING(20),
+            cvss_vector_param       CHARACTER VARYING(20),
+            primary_source_param    TEXT[],
+            mitigations_param       TEXT[],
+            patch_urls_param        TEXT[],
+            confidence_param        TEXT[],
+            cpe_param               TEXT[],
+            reference_param         JSONB
+        )
+            RETURNS VOID
+            LANGUAGE 'plpgsql'
+            COST 100
+            VOLATILE
+        AS
+        $BODY$
+        BEGIN
+            INSERT INTO cve (
+                 id,
+                 summary,
+                 fixed,
+                 cvss_score,
+                 cvss_type,
+                 cvss_severity,
+                 cvss_vector,
+                 primary_source,
+                 mitigations,
+                 patch_urls,
+                 confidence,
+                 cpe,
+                 reference)
+            VALUES (
+                    id_param,
+                    summary_param,
+                    fixed_param,
+                    cvss_score_param,
+                    cvss_type_param,
+                    cvss_severity_param,
+                    cvss_vector_param,
+                    primary_source_param,
+                    mitigations_param,
+                    patch_urls_param,
+                    confidence_param,
+                    cpe_param,
+                    reference_param)
+            ON CONFLICT (id)
+                DO UPDATE
+                SET id = id_param,
+                    summary = summary_param,
+                    fixed = fixed_param,
+                    cvss_score = cvss_score_param,
+                    cvss_type = cvss_type_param,
+                    cvss_severity = cvss_severity_param,
+                    cvss_vector = cvss_vector_param,
+                    primary_source = primary_source_param,
+                    mitigations = mitigations_param,
+                    patch_urls = patch_urls_param,
+                    confidence = confidence_param,
+                    cpe = cpe_param,
+                    reference = reference_param;
+        END ;
+        $BODY$;
+
+        -- remove link between cve and host
+        -- if cve_id_param = NULL then ALL CVE links from the specified host are removed
+        CREATE OR REPLACE FUNCTION pilotctl_unlink_cve(
+            host_uuid_param CHARACTER VARYING(100),
+            cve_id_param CHARACTER VARYING(30)
+        )
+            RETURNS VOID
+            LANGUAGE 'plpgsql'
+            COST 100
+            VOLATILE
+        AS
+        $BODY$
+        BEGIN
+            DELETE FROM cve_host
+            WHERE cve_id = COALESCE(cve_id_param, cve_id)
+              AND host_uuid = host_uuid_param;
+        END;
+        $BODY$;
+
+        -- link a CVE to a Host
+        CREATE OR REPLACE FUNCTION pilotctl_link_cve(
+            host_uuid_param CHARACTER VARYING(100),
+            cve_id_param CHARACTER VARYING(30),
+            scan_date_param TIMESTAMP(6) WITH TIME ZONE
+        )
+            RETURNS VOID
+            LANGUAGE 'plpgsql'
+            COST 100
+            VOLATILE
+        AS
+        $BODY$
+        BEGIN
+            INSERT INTO cve_host(
+                cve_id,
+                host_uuid,
+                scan_date
+            ) VALUES(
+                cve_id_param,
+                host_uuid_param,
+                scan_date_param
+            );
+        END;
+        $BODY$;
+
+        -- add a package to a CVE
+        CREATE OR REPLACE FUNCTION pilotctl_set_cve_package(
+            cve_id_param CHARACTER VARYING(30),
+            package_name_param CHARACTER VARYING(150),
+            fixed_param BOOLEAN,
+            fixed_in_param CHARACTER VARYING(150)
+        )
+            RETURNS VOID
+            LANGUAGE 'plpgsql'
+            COST 100
+            VOLATILE
+        AS
+        $BODY$
+        BEGIN
+            INSERT INTO cve_pac(
+                cve_id,
+                package_name,
+                fixed,
+                fixed_in
+            ) VALUES(
+                cve_id_param,
+                package_name_param,
+                fixed_param,
+                fixed_in_param
+            )
+            ON CONFLICT (cve_id, package_name)
+                DO UPDATE
+                SET
+                    cve_id = cve_id_param,
+                    package_name = package_name_param,
+                    fixed  = fixed_param,
+                    fixed_in = fixed_in_param;
+        END;
+        $BODY$;
+
+        -- add CVE stats to a host
+        CREATE OR REPLACE FUNCTION pilotctl_set_host_cve(
+            host_uuid_param    CHARACTER VARYING(100),
+            cve_critical_param INTEGER,
+            cve_high_param     INTEGER,
+            cve_medium_param   INTEGER,
+            cve_low_param      INTEGER
+        )
+            RETURNS VOID
+            LANGUAGE 'plpgsql'
+            COST 100
+            VOLATILE
+        AS
+        $BODY$
+        BEGIN
+            UPDATE host
+            SET
+                cve_critical = cve_critical_param,
+                cve_high = cve_high_param,
+                cve_medium = cve_medium_param,
+                cve_low = cve_low_param
+            WHERE host_uuid = host_uuid_param;
+        END;
+        $BODY$;
+
+        CREATE OR REPLACE FUNCTION pilotctl_get_cve_baseline(
+            minimum_cvss_score_param NUMERIC(2,1),
+            label_param TEXT[]
+        )
+        RETURNS TABLE
+        (
+            host_uuid    CHARACTER VARYING(100),
+            cve_id       CHARACTER VARYING(30),
+            package_name CHARACTER VARYING(100),
+            fixed_in     CHARACTER VARYING(100),
+            cvss_score   NUMERIC(2,1)
+        )
+        LANGUAGE 'plpgsql'
+        COST 100
+        VOLATILE
+        AS
+        $BODY$
+        BEGIN
+            RETURN QUERY
+                SELECT h.host_uuid, cp.cve_id, cp.package_name, cp.fixed_in, cve.cvss_score
+                FROM cve_pac cp
+                INNER JOIN cve
+                ON cve.id = cp.cve_id
+                    AND cp.fixed = true
+                    AND cve.cvss_score >= minimum_cvss_score_param
+                INNER JOIN cve_host ch
+                    ON ch.cve_id = cve.id
+                INNER JOIN host h
+                    ON h.host_uuid = ch.host_uuid
+                        AND (h.label @> label_param OR label_param IS NULL);
+        END;
+        $BODY$;
+    END
 $$
