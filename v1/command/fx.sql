@@ -74,7 +74,11 @@ $$
                         area        CHARACTER VARYING,
                         location    CHARACTER VARYING,
                         in_service  BOOLEAN,
-                        label       TEXT[]
+                        label       TEXT[],
+                        cve_critical INTEGER,
+                        cve_high    INTEGER,
+                        cve_medium  INTEGER,
+                        cve_low     INTEGER
                     )
             LANGUAGE 'plpgsql'
             COST 100
@@ -97,7 +101,11 @@ $$
                        h.area,
                        h.location,
                        h.in_service,
-                       h.label
+                       h.label,
+                       h.cve_critical,
+                       h.cve_high,
+                       h.cve_medium,
+                       h.cve_low
                 FROM host h
                 WHERE h.decom_date IS NULL -- not decommissioned
                   AND h.area = COALESCE(NULLIF(area_param, ''), h.area)
@@ -137,7 +145,11 @@ $$
                        h.org,
                        h.area,
                        h.location,
-                       h.label
+                       h.label,
+                       h.cve_critical,
+                       h.cve_high,
+                       h.cve_medium,
+                       h.cve_low
                 FROM host h
                 WHERE h.host_uuid = host_uuid_param;
         END ;
@@ -154,7 +166,11 @@ $$
                         org_group   CHARACTER VARYING,
                         org         CHARACTER VARYING,
                         area        CHARACTER VARYING,
-                        location    CHARACTER VARYING
+                        location    CHARACTER VARYING,
+                        cve_critical INTEGER,
+                        cve_high    INTEGER,
+                        cve_medium  INTEGER,
+                        cve_low     INTEGER
                     )
             LANGUAGE 'plpgsql'
             COST 100
@@ -169,7 +185,11 @@ $$
                     h.org_group,
                     h.org,
                     h.area,
-                    h.location
+                    h.location,
+                    h.cve_critical,
+                    h.cve_high,
+                    h.cve_medium,
+                    h.cve_low
                 FROM host h
                 WHERE h.in_service
                   AND h.host_uuid IS NOT NULL
